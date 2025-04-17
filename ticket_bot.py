@@ -115,14 +115,23 @@ class TicketModal(Modal, title="Заявка на сервер"):
                     timeout=300.0
                 )
                 embed.add_field(name="Источник информации о сервере", value=source_response.content, inline=False)
+                print(f"Пользователь {user.name} ответил на второй вопрос: {source_response.content}")
             except asyncio.TimeoutError:
                 embed.add_field(name="Источник информации о сервере", value="Не ответил в течение 5 минут", inline=False)
                 await user.send("Время ожидания истекло. Ваша заявка отклонена. Повторите попытку и ответьте на все вопросы.")
+                print(f"Таймаут ожидания ответа на второй вопрос от {user.name}")
                 return  # Завершаем функцию, не выдаем роль
             
             # Thank the user
-            await user.send("Спасибо за ваши ответы! Ваша заявка полностью отправлена администрации.")
-            dm_completed = True
+            try:
+                await user.send("Спасибо за ваши ответы! Ваша заявка полностью отправлена администрации.")
+                print(f"Отправлено благодарственное сообщение пользователю {user.name}")
+                dm_completed = True
+                print(f"Установлен флаг dm_completed = True для {user.name}")
+            except Exception as e:
+                print(f"Ошибка при отправке благодарственного сообщения: {e}")
+                # Даже если не удалось отправить благодарственное сообщение, процесс не должен прерываться
+                dm_completed = True
         
         except discord.Forbidden:
             # Cannot send DM to the user
@@ -142,6 +151,7 @@ class TicketModal(Modal, title="Заявка на сервер"):
             
         # ТОЛЬКО если прошли все проверки ЛС, выдаем роль
         if dm_completed:
+            print(f"Начинаем процесс выдачи роли и отправки заявки для {user.name}")
             success_message = "Ваша заявка успешно отправлена администрации!"
             
             # Выдаем роль пользователю
@@ -160,25 +170,32 @@ class TicketModal(Modal, title="Заявка на сервер"):
                         print(f"Пользователю {interaction.user.name} выдана роль {role.name}")
                         success_message += f" Вам выдана роль \"{role.name}\"!"
                     else:
-                        print(f"Ошибка: Роль с ID {ROLE_ID} не найдена")
+                        print(f"Ошибка: Роль с ID {ROLE_ID} не найдена на сервере {guild.name}")
                 else:
-                    print("Ошибка: Не удалось получить объект сервера")
+                    print(f"Ошибка: Не удалось получить объект сервера для пользователя {interaction.user.name}")
             except Exception as e:
-                print(f"Ошибка при выдаче роли: {e}")
+                print(f"Ошибка при выдаче роли пользователю {interaction.user.name}: {e}")
             
             try:
                 await interaction.followup.send(success_message, ephemeral=True)
-            except:
-                pass
+                print(f"Отправлено уведомление об успешной подаче заявки для {user.name}")
+            except Exception as e:
+                print(f"Ошибка при отправке уведомления об успешной подаче заявки: {e}")
             
             # Add timestamp and user ID
             embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
             
             # Send the embed to the staff channel
             if staff_channel:
-                await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed)
+                try:
+                    await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed)
+                    print(f"Заявка для {user.name} успешно отправлена в канал администрации")
+                except Exception as e:
+                    print(f"Ошибка при отправке заявки в канал администрации: {e}")
             else:
                 print(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
+        else:
+            print(f"Пользователь {user.name} не завершил процесс подачи заявки (dm_completed = False)")
 
 # Button View class
 class TicketView(View):
@@ -203,12 +220,17 @@ async def on_ready():
     print(f'Бот {client.user} запущен и готов к работе!')
     
     # Sync commands
-    await tree.sync()
+    try:
+        await tree.sync()
+        print("Команды успешно синхронизированы")
+    except Exception as e:
+        print(f"Ошибка при синхронизации команд: {e}")
     
     # Get the ticket channel
     ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
     
     if ticket_channel:
+        print(f"Канал для заявок найден: {ticket_channel.name}")
         # Проверяем, есть ли уже сообщение с кнопкой от этого бота
         has_message = False
         try:
@@ -280,6 +302,15 @@ async def send_ticket(interaction: discord.Interaction):
     else:
         # Respond with an error
         await interaction.followup.send(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
+
+@client.event
+async def on_error(event, *args, **kwargs):
+    print(f"Произошла ошибка в событии {event}: {args}, {kwargs}")
+
+@client.event 
+async def on_application_command_error(interaction, error):
+    print(f"Ошибка при выполнении команды: {error}")
+    await interaction.response.send_message(f"Произошла ошибка: {error}", ephemeral=True)
 
 # Start the bot
 client.run(TOKEN) 
