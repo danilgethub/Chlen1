@@ -135,8 +135,15 @@ class TicketView(View):
     
     @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.primary, custom_id="ticket_button")
     async def ticket_button(self, interaction: discord.Interaction, button: Button):
-        # Send the modal to the user
-        await interaction.response.send_modal(TicketModal())
+        try:
+            # Send the modal to the user
+            await interaction.response.send_modal(TicketModal())
+        except Exception as e:
+            print(f"Ошибка при отправке модального окна: {e}")
+            try:
+                await interaction.response.send_message("Произошла ошибка при открытии формы. Пожалуйста, попробуйте еще раз или сообщите администратору.", ephemeral=True)
+            except:
+                pass
 
 # Bot ready event
 @client.event
@@ -150,26 +157,28 @@ async def on_ready():
     ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
     
     if ticket_channel:
-        # Check if there's already a ticket message
-        async for message in ticket_channel.history(limit=100):
-            if message.author == client.user and len(message.components) > 0:
-                # A message with components from this bot already exists
-                print(f"Ticket message already exists")
-                return
-        
-        # Create an embed for the ticket message
-        embed = discord.Embed(
-            title="Заявка на сервер",
-            description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
-            color=discord.Color.green()
-        )
-        
-        # Create a view with the ticket button
-        view = TicketView()
-        
-        # Send the embed with the view
-        await ticket_channel.send(embed=embed, view=view)
-        print(f"Sent ticket message to channel {TICKET_CHANNEL_ID}")
+        # Удаляем старые сообщения с кнопками от бота и создаем новое
+        try:
+            async for message in ticket_channel.history(limit=100):
+                if message.author == client.user and len(message.components) > 0:
+                    await message.delete()
+                    print(f"Удалено старое сообщение с кнопкой")
+            
+            # Create an embed for the ticket message
+            embed = discord.Embed(
+                title="Заявка на сервер",
+                description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
+                color=discord.Color.green()
+            )
+            
+            # Create a view with the ticket button
+            view = TicketView()
+            
+            # Send the embed with the view
+            await ticket_channel.send(embed=embed, view=view)
+            print(f"Отправлено новое сообщение с кнопкой в канал {TICKET_CHANNEL_ID}")
+        except Exception as e:
+            print(f"Ошибка при обновлении сообщения с кнопкой: {e}")
     else:
         print(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
 
