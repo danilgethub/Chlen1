@@ -123,7 +123,7 @@ class TicketModal(Modal, title="Заявка на сервер"):
             embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
             
             # Send the embed to the staff channel
-            await staff_channel.send(embed=embed)
+            await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed)
         else:
             # Log an error if the staff channel is not found
             print(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
