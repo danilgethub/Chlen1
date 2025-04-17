@@ -62,109 +62,123 @@ class TicketModal(Modal, title="Заявка на сервер"):
         super().__init__(title="Заявка на сервер")
         
     async def on_submit(self, interaction: discord.Interaction):
-        success_message = "Ваша заявка отправлена! Спасибо за интерес к нашему серверу."
+        # Сначала отправляем начальное сообщение
+        await interaction.response.send_message("Ваша заявка принята! Проверьте личные сообщения для завершения заявки.", ephemeral=True)
         
         # Get the staff channel
         staff_channel = client.get_channel(STAFF_CHANNEL_ID)
         
-        # Выдаем роль пользователю
-        role_granted = False
+        # Создаем эмбед для заявки
+        embed = discord.Embed(
+            title=f"Новая заявка от {self.nickname.value}",
+            description="Информация об игроке:",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(name="Ник", value=self.nickname.value, inline=False)
+        embed.add_field(name="Возраст", value=self.age.value, inline=False)
+        embed.add_field(name="Играл на подобных серверах", value=self.experience.value, inline=False)
+        embed.add_field(name="Самооценка адекватности", value=self.adequacy.value, inline=False)
+        embed.add_field(name="Планы на сервере", value=self.plans.value, inline=False)
+        
+        # Get user for DM
+        user = interaction.user
+        
+        # Флаг успешного прохождения ЛС этапа
+        dm_completed = False
+        
+        # Send an additional DM to get more information
         try:
-            # ID роли для выдачи
-            ROLE_ID = 1359775270843842653
+            # Проверяем возможность отправить DM
+            test_dm = await user.send("Пожалуйста, ответьте на дополнительные вопросы (это займет не более минуты). Если вы не ответите, ваша заявка не будет отправлена администрации.")
             
-            # Получаем объект сервера
-            guild = interaction.guild
-            if guild:
-                # Получаем объект роли
-                role = guild.get_role(ROLE_ID)
-                if role:
-                    # Выдаем роль пользователю
-                    await interaction.user.add_roles(role, reason="Подал заявку на сервер")
-                    print(f"Пользователю {interaction.user.name} выдана роль {role.name}")
-                    success_message += f" Вам выдана роль \"{role.name}\"!"
-                    role_granted = True
-                else:
-                    print(f"Ошибка: Роль с ID {ROLE_ID} не найдена")
-            else:
-                print("Ошибка: Не удалось получить объект сервера")
-        except Exception as e:
-            print(f"Ошибка при выдаче роли: {e}")
-        
-        # Отправляем сообщение об успешной отправке заявки
-        await interaction.response.send_message(success_message, ephemeral=True)
-        
-        if staff_channel:
-            # Create an embed for the ticket
-            embed = discord.Embed(
-                title=f"Новая заявка от {self.nickname.value}",
-                description="Информация об игроке:",
-                color=discord.Color.blue()
-            )
-            
-            embed.add_field(name="Ник", value=self.nickname.value, inline=False)
-            embed.add_field(name="Возраст", value=self.age.value, inline=False)
-            embed.add_field(name="Играл на подобных серверах", value=self.experience.value, inline=False)
-            embed.add_field(name="Самооценка адекватности", value=self.adequacy.value, inline=False)
-            embed.add_field(name="Планы на сервере", value=self.plans.value, inline=False)
-            
-            # Get the additional questions from the second page
-            interaction_message = interaction.message if hasattr(interaction, 'message') else None
-            user = interaction.user
-            
-            # Send an additional DM to get more information
-            has_dm_access = True
+            # Ask about griefing
+            griefing_question = await user.send("Как вы относитесь к грифу?")
             try:
-                # Проверяем возможность отправить DM
-                test_dm = await user.send("Пожалуйста, ответьте на дополнительные вопросы (это займет не более минуты):")
-                
-                # Ask about griefing
-                griefing_question = await user.send("Как вы относитесь к грифу?")
-                try:
-                    griefing_response = await client.wait_for(
-                        'message',
-                        check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
-                        timeout=300.0
-                    )
-                    embed.add_field(name="Отношение к грифу", value=griefing_response.content, inline=False)
-                except asyncio.TimeoutError:
-                    embed.add_field(name="Отношение к грифу", value="Не ответил в течение 5 минут", inline=False)
-                    await user.send("Время ожидания истекло. Ваша заявка отправлена без ответа на этот вопрос.")
-                
-                # Ask about how they found the server
-                await user.send("Откуда узнали о сервере?")
-                try:
-                    source_response = await client.wait_for(
-                        'message',
-                        check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
-                        timeout=300.0
-                    )
-                    embed.add_field(name="Источник информации о сервере", value=source_response.content, inline=False)
-                except asyncio.TimeoutError:
-                    embed.add_field(name="Источник информации о сервере", value="Не ответил в течение 5 минут", inline=False)
-                    await user.send("Время ожидания истекло. Ваша заявка отправлена без ответа на этот вопрос.")
-                
-                # Thank the user
-                await user.send("Спасибо за ваши ответы! Ваша заявка полностью отправлена администрации.")
+                griefing_response = await client.wait_for(
+                    'message',
+                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
+                    timeout=300.0
+                )
+                embed.add_field(name="Отношение к грифу", value=griefing_response.content, inline=False)
+            except asyncio.TimeoutError:
+                embed.add_field(name="Отношение к грифу", value="Не ответил в течение 5 минут", inline=False)
+                await user.send("Время ожидания истекло. Ваша заявка отклонена. Повторите попытку и ответьте на все вопросы.")
+                return  # Завершаем функцию, не выдаем роль
             
-            except discord.Forbidden:
-                # Cannot send DM to the user
-                has_dm_access = False
-                embed.add_field(name="Дополнительная информация", value="Не удалось отправить DM пользователю. Возможно у пользователя закрыты личные сообщения.", inline=False)
+            # Ask about how they found the server
+            await user.send("Откуда узнали о сервере?")
+            try:
+                source_response = await client.wait_for(
+                    'message',
+                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
+                    timeout=300.0
+                )
+                embed.add_field(name="Источник информации о сервере", value=source_response.content, inline=False)
+            except asyncio.TimeoutError:
+                embed.add_field(name="Источник информации о сервере", value="Не ответил в течение 5 минут", inline=False)
+                await user.send("Время ожидания истекло. Ваша заявка отклонена. Повторите попытку и ответьте на все вопросы.")
+                return  # Завершаем функцию, не выдаем роль
+            
+            # Thank the user
+            await user.send("Спасибо за ваши ответы! Ваша заявка полностью отправлена администрации.")
+            dm_completed = True
+        
+        except discord.Forbidden:
+            # Cannot send DM to the user
+            try:
+                await interaction.followup.send("Не удалось отправить вам личное сообщение. Пожалуйста, откройте личные сообщения в настройках приватности Discord и попробуйте снова.", ephemeral=True)
+            except:
+                pass
+            return  # Завершаем функцию, не выдаем роль
+        except Exception as e:
+            # Other errors
+            print(f"Ошибка при отправке DM: {e}")
+            try:
+                await interaction.followup.send("Произошла ошибка при обработке заявки. Пожалуйста, попробуйте позже.", ephemeral=True)
+            except:
+                pass
+            return  # Завершаем функцию, не выдаем роль
+            
+        # ТОЛЬКО если прошли все проверки ЛС, выдаем роль
+        if dm_completed:
+            success_message = "Ваша заявка успешно отправлена администрации!"
+            
+            # Выдаем роль пользователю
+            try:
+                # ID роли для выдачи
+                ROLE_ID = 1359775270843842653
+                
+                # Получаем объект сервера
+                guild = interaction.guild
+                if guild:
+                    # Получаем объект роли
+                    role = guild.get_role(ROLE_ID)
+                    if role:
+                        # Выдаем роль пользователю
+                        await interaction.user.add_roles(role, reason="Подал заявку на сервер")
+                        print(f"Пользователю {interaction.user.name} выдана роль {role.name}")
+                        success_message += f" Вам выдана роль \"{role.name}\"!"
+                    else:
+                        print(f"Ошибка: Роль с ID {ROLE_ID} не найдена")
+                else:
+                    print("Ошибка: Не удалось получить объект сервера")
             except Exception as e:
-                # Other errors
-                has_dm_access = False
-                print(f"Ошибка при отправке DM: {e}")
-                embed.add_field(name="Дополнительная информация", value=f"Ошибка при получении дополнительной информации: {str(e)[:100]}", inline=False)
+                print(f"Ошибка при выдаче роли: {e}")
+            
+            try:
+                await interaction.followup.send(success_message, ephemeral=True)
+            except:
+                pass
             
             # Add timestamp and user ID
             embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
             
             # Send the embed to the staff channel
-            await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed)
-        else:
-            # Log an error if the staff channel is not found
-            print(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
+            if staff_channel:
+                await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed)
+            else:
+                print(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
 
 # Button View class
 class TicketView(View):
