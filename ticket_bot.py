@@ -19,6 +19,7 @@ STAFF_CHANNEL_ID = 1362471645922463794   # Channel where completed tickets will 
 # Define intents
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True  # Добавляем интент для работы с участниками сервера
 
 # Create bot client
 client = discord.Client(intents=intents)
@@ -61,12 +62,13 @@ class TicketModal(Modal, title="Заявка на сервер"):
         super().__init__(title="Заявка на сервер")
         
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Ваша заявка отправлена! Спасибо за интерес к нашему серверу.", ephemeral=True)
+        success_message = "Ваша заявка отправлена! Спасибо за интерес к нашему серверу."
         
         # Get the staff channel
         staff_channel = client.get_channel(STAFF_CHANNEL_ID)
         
         # Выдаем роль пользователю
+        role_granted = False
         try:
             # ID роли для выдачи
             ROLE_ID = 1359775270843842653
@@ -80,12 +82,17 @@ class TicketModal(Modal, title="Заявка на сервер"):
                     # Выдаем роль пользователю
                     await interaction.user.add_roles(role, reason="Подал заявку на сервер")
                     print(f"Пользователю {interaction.user.name} выдана роль {role.name}")
+                    success_message += f" Вам выдана роль \"{role.name}\"!"
+                    role_granted = True
                 else:
                     print(f"Ошибка: Роль с ID {ROLE_ID} не найдена")
             else:
                 print("Ошибка: Не удалось получить объект сервера")
         except Exception as e:
             print(f"Ошибка при выдаче роли: {e}")
+        
+        # Отправляем сообщение об успешной отправке заявки
+        await interaction.response.send_message(success_message, ephemeral=True)
         
         if staff_channel:
             # Create an embed for the ticket
@@ -106,11 +113,13 @@ class TicketModal(Modal, title="Заявка на сервер"):
             user = interaction.user
             
             # Send an additional DM to get more information
+            has_dm_access = True
             try:
-                await user.send("Пожалуйста, ответьте на дополнительные вопросы:")
+                # Проверяем возможность отправить DM
+                test_dm = await user.send("Пожалуйста, ответьте на дополнительные вопросы (это займет не более минуты):")
                 
                 # Ask about griefing
-                await user.send("Как вы относитесь к грифу?")
+                griefing_question = await user.send("Как вы относитесь к грифу?")
                 try:
                     griefing_response = await client.wait_for(
                         'message',
@@ -119,7 +128,8 @@ class TicketModal(Modal, title="Заявка на сервер"):
                     )
                     embed.add_field(name="Отношение к грифу", value=griefing_response.content, inline=False)
                 except asyncio.TimeoutError:
-                    embed.add_field(name="Отношение к грифу", value="Не ответил", inline=False)
+                    embed.add_field(name="Отношение к грифу", value="Не ответил в течение 5 минут", inline=False)
+                    await user.send("Время ожидания истекло. Ваша заявка отправлена без ответа на этот вопрос.")
                 
                 # Ask about how they found the server
                 await user.send("Откуда узнали о сервере?")
@@ -131,14 +141,21 @@ class TicketModal(Modal, title="Заявка на сервер"):
                     )
                     embed.add_field(name="Источник информации о сервере", value=source_response.content, inline=False)
                 except asyncio.TimeoutError:
-                    embed.add_field(name="Источник информации о сервере", value="Не ответил", inline=False)
+                    embed.add_field(name="Источник информации о сервере", value="Не ответил в течение 5 минут", inline=False)
+                    await user.send("Время ожидания истекло. Ваша заявка отправлена без ответа на этот вопрос.")
                 
                 # Thank the user
                 await user.send("Спасибо за ваши ответы! Ваша заявка полностью отправлена администрации.")
             
             except discord.Forbidden:
                 # Cannot send DM to the user
-                embed.add_field(name="Дополнительная информация", value="Не удалось отправить DM пользователю для получения дополнительной информации", inline=False)
+                has_dm_access = False
+                embed.add_field(name="Дополнительная информация", value="Не удалось отправить DM пользователю. Возможно у пользователя закрыты личные сообщения.", inline=False)
+            except Exception as e:
+                # Other errors
+                has_dm_access = False
+                print(f"Ошибка при отправке DM: {e}")
+                embed.add_field(name="Дополнительная информация", value=f"Ошибка при получении дополнительной информации: {str(e)[:100]}", inline=False)
             
             # Add timestamp and user ID
             embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
@@ -159,14 +176,10 @@ class TicketView(View):
         try:
             # Send the modal to the user
             await interaction.response.send_modal(TicketModal())
-        except discord.errors.NotFound:
-            # Если интеракция уже истекла или не найдена
-            print("Ошибка: Интеракция истекла")
         except Exception as e:
             print(f"Ошибка при отправке модального окна: {e}")
             try:
-                if not interaction.response.is_done():
-                    await interaction.response.send_message("Произошла ошибка при открытии формы. Попробуйте перезагрузить страницу и нажать кнопку снова.", ephemeral=True)
+                await interaction.response.send_message("Произошла ошибка при открытии формы. Пожалуйста, попробуйте еще раз или сообщите администратору.", ephemeral=True)
             except:
                 pass
 
@@ -182,18 +195,21 @@ async def on_ready():
     ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
     
     if ticket_channel:
-        # Проверяем наличие сообщения с кнопкой
-        message_exists = False
+        # Проверяем, есть ли уже сообщение с кнопкой от этого бота
+        has_message = False
         try:
-            async for message in ticket_channel.history(limit=100):
+            # Проверяем только последние 5 сообщений для оптимизации
+            async for message in ticket_channel.history(limit=5):
                 if message.author == client.user and len(message.components) > 0:
-                    # Найдено старое сообщение, используем его
-                    message_exists = True
-                    print(f"Найдено существующее сообщение с кнопкой")
+                    # Проверка работоспособности кнопки - если она интерактивная, оставляем
+                    has_message = True
+                    view = TicketView()
+                    message = await message.edit(view=view)
+                    print(f"Обновлено существующее сообщение с кнопкой")
                     break
             
-            # Если нет сообщения с кнопкой - создаем новое
-            if not message_exists:
+            # Если нет рабочего сообщения с кнопкой, создаем новое
+            if not has_message:
                 # Create an embed for the ticket message
                 embed = discord.Embed(
                     title="Заявка на сервер",
@@ -208,16 +224,21 @@ async def on_ready():
                 await ticket_channel.send(embed=embed, view=view)
                 print(f"Отправлено новое сообщение с кнопкой в канал {TICKET_CHANNEL_ID}")
         except Exception as e:
-            print(f"Ошибка при проверке сообщения с кнопкой: {e}")
+            print(f"Ошибка при обновлении сообщения с кнопкой: {e}")
+            # В случае ошибки создаем новое сообщение
+            try:
+                embed = discord.Embed(
+                    title="Заявка на сервер",
+                    description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
+                    color=discord.Color.green()
+                )
+                view = TicketView()
+                await ticket_channel.send(embed=embed, view=view)
+                print(f"Создано новое сообщение после ошибки")
+            except Exception as e2:
+                print(f"Критическая ошибка при создании сообщения: {e2}")
     else:
         print(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
-
-# Обработчик ошибок интеракций
-@client.event
-async def on_application_command_error(interaction, error):
-    if isinstance(error, discord.app_commands.errors.CommandInvokeError):
-        await interaction.response.send_message(f"Произошла ошибка: {error}", ephemeral=True)
-    print(f"Ошибка команды: {error}")
 
 # Command to send a new ticket message
 @tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки")
