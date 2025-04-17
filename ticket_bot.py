@@ -66,6 +66,27 @@ class TicketModal(Modal, title="Заявка на сервер"):
         # Get the staff channel
         staff_channel = client.get_channel(STAFF_CHANNEL_ID)
         
+        # Выдаем роль пользователю
+        try:
+            # ID роли для выдачи
+            ROLE_ID = 1359775270843842653
+            
+            # Получаем объект сервера
+            guild = interaction.guild
+            if guild:
+                # Получаем объект роли
+                role = guild.get_role(ROLE_ID)
+                if role:
+                    # Выдаем роль пользователю
+                    await interaction.user.add_roles(role, reason="Подал заявку на сервер")
+                    print(f"Пользователю {interaction.user.name} выдана роль {role.name}")
+                else:
+                    print(f"Ошибка: Роль с ID {ROLE_ID} не найдена")
+            else:
+                print("Ошибка: Не удалось получить объект сервера")
+        except Exception as e:
+            print(f"Ошибка при выдаче роли: {e}")
+        
         if staff_channel:
             # Create an embed for the ticket
             embed = discord.Embed(
