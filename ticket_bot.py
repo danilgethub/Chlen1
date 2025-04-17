@@ -3,11 +3,14 @@ from discord import app_commands
 from discord.ui import Button, View, Modal, TextInput
 import asyncio
 import os
-from dotenv import load_dotenv
 
-# Load token from .env file or use directly from code
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN", "MTM2MjQ3MjI0OTIwNTk4MTM1NQ.G3YxU6.ybwX7nu9vWdrAk-g68Qel61Dvzrqc1ugJf68NY")
+# Получаем токен напрямую из переменной окружения
+TOKEN = os.getenv("TOKEN")
+
+if not TOKEN:
+    print("ОШИБКА: Токен бота не указан в переменных окружения!")
+    print("Добавьте переменную TOKEN в настройках платформы Railway")
+    exit(1)
 
 # Define channel IDs
 TICKET_CHANNEL_ID = 1359611434862120960  # Channel where ticket button will be displayed
