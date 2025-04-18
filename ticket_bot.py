@@ -15,6 +15,7 @@ if not TOKEN:
 # Define channel IDs
 TICKET_CHANNEL_ID = 1359611434862120960  # Channel where ticket button will be displayed
 STAFF_CHANNEL_ID = 1362471645922463794   # Channel where completed tickets will be sent
+REPORT_CHANNEL_ID = 1362794547012436158  # Channel where report button will be displayed
 
 # Define intents
 intents = discord.Intents.default()
@@ -214,6 +215,149 @@ class TicketView(View):
             except:
                 pass
 
+# View с кнопками для выбора типа жалобы
+class ReportTypeView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Жалоба на игрока", style=discord.ButtonStyle.danger, custom_id="report_player")
+    async def report_player_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        await create_ticket_channel(interaction, "player")
+    
+    @discord.ui.button(label="Жалоба о баге", style=discord.ButtonStyle.primary, custom_id="report_bug")
+    async def report_bug_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        await create_ticket_channel(interaction, "bug")
+    
+    @discord.ui.button(label="Жалоба о проблеме", style=discord.ButtonStyle.secondary, custom_id="report_issue")
+    async def report_issue_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        await create_ticket_channel(interaction, "issue")
+
+# Создание приватного канала для тикета
+async def create_ticket_channel(interaction: discord.Interaction, ticket_type):
+    user = interaction.user
+    guild = interaction.guild
+    
+    if not guild:
+        await interaction.followup.send("Ошибка: не удалось получить информацию о сервере", ephemeral=True)
+        return
+    
+    # Определение названия канала
+    channel_name = f"тикет-{ticket_type}-{user.name}"
+    
+    try:
+        # Получение роли администратора
+        admin_roles = [role for role in guild.roles if role.permissions.administrator]
+        
+        # Создание прав доступа (overwrites)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+            user: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+        
+        # Добавление прав для админов
+        for role in admin_roles:
+            overwrites[role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        # Создание категории "Тикеты" если её нет
+        ticket_category = None
+        for category in guild.categories:
+            if category.name == "Тикеты":
+                ticket_category = category
+                break
+        
+        if not ticket_category:
+            ticket_category = await guild.create_category("Тикеты")
+        
+        # Создание текстового канала
+        ticket_channel = await guild.create_text_channel(
+            name=channel_name,
+            overwrites=overwrites,
+            category=ticket_category
+        )
+        
+        # Отправка сообщения в новый канал с шаблоном жалобы
+        if ticket_type == "player":
+            template = """**Жалоба на игрока**
+
+Пожалуйста, заполните следующую информацию:
+
+**Ник игрока:** 
+**Ваш ник:** 
+**Правило, которое нарушил:** 
+**Описание ситуации:** 
+**Демонстрация (скриншоты/видео):** 
+
+После заполнения жалобы, ожидайте ответа администрации."""
+        
+        elif ticket_type == "bug":
+            template = """**Жалоба о баге**
+
+Пожалуйста, заполните следующую информацию:
+
+**Ваш ник:** 
+**Описание проблемы/бага:** 
+**Демонстрация (скриншоты/видео):** 
+
+После заполнения жалобы, ожидайте ответа администрации."""
+        
+        else:  # issue
+            template = """**Жалоба о проблеме**
+
+Пожалуйста, заполните следующую информацию:
+
+**Ваш ник:** 
+**Описание проблемы:** 
+
+После заполнения жалобы, ожидайте ответа администрации."""
+        
+        # Отправка сообщения с шаблоном
+        await ticket_channel.send(f"{user.mention}, ваш тикет создан! Пожалуйста, заполните информацию ниже:")
+        await ticket_channel.send(template)
+        
+        # Кнопка для закрытия тикета
+        close_view = CloseTicketView()
+        await ticket_channel.send("Когда вопрос будет решен, тикет можно закрыть:", view=close_view)
+        
+        # Ответ пользователю
+        await interaction.followup.send(f"Тикет создан! Перейдите в канал {ticket_channel.mention}", ephemeral=True)
+        
+    except Exception as e:
+        print(f"Ошибка при создании тикета: {e}")
+        await interaction.followup.send(f"Произошла ошибка при создании тикета: {e}", ephemeral=True)
+
+# View с кнопкой для закрытия тикета
+class CloseTicketView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.danger, custom_id="close_ticket")
+    async def close_ticket_button(self, interaction: discord.Interaction, button: Button):
+        # Проверка, является ли пользователь администратором
+        is_admin = interaction.user.guild_permissions.administrator
+        
+        # Если пользователь не администратор, отправляем сообщение
+        if not is_admin:
+            await interaction.response.send_message("Только администраторы могут закрывать тикеты.", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        
+        # Отправка сообщения перед закрытием
+        await interaction.channel.send("Тикет закрывается...")
+        
+        # Задержка для чтения сообщения
+        await asyncio.sleep(3)
+        
+        # Удаление канала
+        try:
+            await interaction.channel.delete()
+        except Exception as e:
+            print(f"Ошибка при удалении канала тикета: {e}")
+            await interaction.channel.send(f"Ошибка при закрытии тикета: {e}")
+
 # Bot ready event
 @client.event
 async def on_ready():
@@ -265,9 +409,101 @@ async def on_ready():
             print(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
         print(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
+    
+    # Получение канала для жалоб
+    report_channel = client.get_channel(REPORT_CHANNEL_ID)
+    
+    if report_channel:
+        print(f"Канал для жалоб найден: {report_channel.name}")
+        # Проверяем, есть ли уже сообщение с кнопками жалоб от этого бота
+        has_report_message = False
+        try:
+            # Проверяем сообщения в канале
+            async for message in report_channel.history(limit=20):
+                if message.author.id == client.user.id and len(message.components) > 0:
+                    # Проверка работоспособности кнопок - если они интерактивные, оставляем
+                    has_report_message = True
+                    view = ReportTypeView()
+                    message = await message.edit(view=view)
+                    print(f"Обновлено существующее сообщение с кнопками для жалоб")
+                    break
+            
+            # Если нет рабочего сообщения с кнопками, создаем новое
+            if not has_report_message:
+                # Create an embed for the report message
+                embed = discord.Embed(
+                    title="Система жалоб",
+                    description="Нажмите на одну из кнопок ниже, чтобы создать тикет с жалобой.",
+                    color=discord.Color.red()
+                )
+                
+                # Create a view with the report buttons
+                view = ReportTypeView()
+                
+                # Send the embed with the view
+                await report_channel.send(embed=embed, view=view)
+                print(f"Отправлено новое сообщение с кнопками жалоб в канал {REPORT_CHANNEL_ID}")
+        except Exception as e:
+            print(f"Ошибка при обновлении сообщения с кнопками жалоб: {e}")
+            print(f"Пропущено создание нового сообщения для предотвращения дублирования")
+    else:
+        print(f"Error: Report channel with ID {REPORT_CHANNEL_ID} not found")
 
-# Command to send a new ticket message
-@tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки")
+# Команда для отправки сообщения с кнопками жалоб
+@tree.command(name="send_report_buttons", description="Отправить сообщение с кнопками для создания жалоб")
+@app_commands.default_permissions(administrator=True)
+async def send_report_buttons(interaction: discord.Interaction):
+    # Get the report channel
+    report_channel = client.get_channel(REPORT_CHANNEL_ID)
+    
+    if report_channel:
+        # Проверяем, есть ли уже сообщение с кнопками
+        has_message = False
+        try:
+            # Проверяем сообщения в канале
+            async for message in report_channel.history(limit=20):
+                if message.author.id == client.user.id and len(message.components) > 0:
+                    # Если нашли сообщение с кнопками, обновляем его
+                    has_message = True
+                    view = ReportTypeView()
+                    await message.edit(view=view, embed=message.embeds[0] if message.embeds else None)
+                    await interaction.response.send_message("Существующее сообщение с кнопками жалоб обновлено!", ephemeral=True)
+                    break
+            
+            # Если сообщение не найдено, создаем новое
+            if not has_message:
+                # Create an embed for the report message
+                embed = discord.Embed(
+                    title="Система жалоб",
+                    description="Нажмите на одну из кнопок ниже, чтобы создать тикет с жалобой.",
+                    color=discord.Color.red()
+                )
+                
+                # Create a view with the report buttons
+                view = ReportTypeView()
+                
+                # Send the embed with the view
+                await report_channel.send(embed=embed, view=view)
+                await interaction.response.send_message("Новое сообщение с кнопками жалоб отправлено!", ephemeral=True)
+            
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения с кнопками жалоб: {e}")
+            await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
+    else:
+        # Respond with an error
+        await interaction.response.send_message(f"Ошибка: канал с ID {REPORT_CHANNEL_ID} не найден", ephemeral=True)
+
+@client.event
+async def on_error(event, *args, **kwargs):
+    print(f"Произошла ошибка в событии {event}: {args}, {kwargs}")
+
+@client.event 
+async def on_application_command_error(interaction, error):
+    print(f"Ошибка при выполнении команды: {error}")
+    await interaction.response.send_message(f"Произошла ошибка: {error}", ephemeral=True)
+
+# Command to send a new ticket message - для заявок на вступление на сервер
+@tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки на вступление")
 @app_commands.default_permissions(administrator=True)
 async def send_ticket(interaction: discord.Interaction):
     # Get the ticket channel
@@ -309,15 +545,6 @@ async def send_ticket(interaction: discord.Interaction):
     else:
         # Respond with an error
         await interaction.response.send_message(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
-
-@client.event
-async def on_error(event, *args, **kwargs):
-    print(f"Произошла ошибка в событии {event}: {args}, {kwargs}")
-
-@client.event 
-async def on_application_command_error(interaction, error):
-    print(f"Ошибка при выполнении команды: {error}")
-    await interaction.response.send_message(f"Произошла ошибка: {error}", ephemeral=True)
 
 # Start the bot
 client.run(TOKEN) 
