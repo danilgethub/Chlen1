@@ -234,9 +234,9 @@ async def on_ready():
         # Проверяем, есть ли уже сообщение с кнопкой от этого бота
         has_message = False
         try:
-            # Проверяем только последние 5 сообщений для оптимизации
-            async for message in ticket_channel.history(limit=5):
-                if message.author == client.user and len(message.components) > 0:
+            # Проверяем больше сообщений, чтобы точно найти существующее
+            async for message in ticket_channel.history(limit=20):
+                if message.author.id == client.user.id and len(message.components) > 0:
                     # Проверка работоспособности кнопки - если она интерактивная, оставляем
                     has_message = True
                     view = TicketView()
@@ -261,18 +261,8 @@ async def on_ready():
                 print(f"Отправлено новое сообщение с кнопкой в канал {TICKET_CHANNEL_ID}")
         except Exception as e:
             print(f"Ошибка при обновлении сообщения с кнопкой: {e}")
-            # В случае ошибки создаем новое сообщение
-            try:
-                embed = discord.Embed(
-                    title="Заявка на сервер",
-                    description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
-                    color=discord.Color.green()
-                )
-                view = TicketView()
-                await ticket_channel.send(embed=embed, view=view)
-                print(f"Создано новое сообщение после ошибки")
-            except Exception as e2:
-                print(f"Критическая ошибка при создании сообщения: {e2}")
+            # Не создаем новое сообщение при ошибке во избежание дублей
+            print(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
         print(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
 
@@ -280,28 +270,45 @@ async def on_ready():
 @tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки")
 @app_commands.default_permissions(administrator=True)
 async def send_ticket(interaction: discord.Interaction):
-    # Create an embed for the ticket message
-    embed = discord.Embed(
-        title="Заявка на сервер",
-        description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
-        color=discord.Color.green()
-    )
-    
-    # Create a view with the ticket button
-    view = TicketView()
-    
-    # Respond to the interaction
-    await interaction.response.send_message("Отправляю сообщение с кнопкой заявки...", ephemeral=True)
-    
     # Get the ticket channel
     ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
     
     if ticket_channel:
-        # Send the embed with the view
-        await ticket_channel.send(embed=embed, view=view)
+        # Проверяем, есть ли уже сообщение с кнопкой
+        has_message = False
+        try:
+            # Проверяем сообщения в канале
+            async for message in ticket_channel.history(limit=20):
+                if message.author.id == client.user.id and len(message.components) > 0:
+                    # Если нашли сообщение с кнопкой, обновляем его
+                    has_message = True
+                    view = TicketView()
+                    await message.edit(view=view, embed=message.embeds[0] if message.embeds else None)
+                    await interaction.response.send_message("Существующее сообщение с кнопкой обновлено!", ephemeral=True)
+                    break
+            
+            # Если сообщение не найдено, создаем новое
+            if not has_message:
+                # Create an embed for the ticket message
+                embed = discord.Embed(
+                    title="Заявка на сервер",
+                    description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
+                    color=discord.Color.green()
+                )
+                
+                # Create a view with the ticket button
+                view = TicketView()
+                
+                # Send the embed with the view
+                await ticket_channel.send(embed=embed, view=view)
+                await interaction.response.send_message("Новое сообщение с кнопкой заявки отправлено!", ephemeral=True)
+            
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения с кнопкой: {e}")
+            await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
     else:
         # Respond with an error
-        await interaction.followup.send(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
+        await interaction.response.send_message(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
 
 @client.event
 async def on_error(event, *args, **kwargs):
