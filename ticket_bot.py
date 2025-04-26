@@ -16,6 +16,10 @@ if not TOKEN:
 TICKET_CHANNEL_ID = 1359611434862120960  # Channel where ticket button will be displayed
 STAFF_CHANNEL_ID = 1362471645922463794   # Channel where completed tickets will be sent
 REPORT_CHANNEL_ID = 1362794547012436158  # Channel where report button will be displayed
+APPROVED_CHANNEL_ID = 1365696815403630726  # Channel where approved applications will be sent
+
+# Define role IDs
+PLAYER_ROLE_ID = 1359775270843842653  # "Игрок" role ID 
 
 # Define intents
 intents = discord.Intents.default()
@@ -25,6 +29,92 @@ intents.members = True  # Добавляем интент для работы с
 # Create bot client
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
+# Button View class для кнопок "Принять" и "Отклонить"
+class ApplicationActionView(View):
+    def __init__(self, applicant_id, applicant_nickname, applicant_age):
+        super().__init__(timeout=None)
+        self.applicant_id = applicant_id
+        self.applicant_nickname = applicant_nickname
+        self.applicant_age = applicant_age
+    
+    @discord.ui.button(label="Принять", style=discord.ButtonStyle.success, custom_id="accept_application")
+    async def accept_application_button(self, interaction: discord.Interaction, button: Button):
+        # Проверяем, имеет ли пользователь права администратора
+        is_admin = interaction.user.guild_permissions.administrator
+        
+        if not is_admin:
+            await interaction.response.send_message("Только администраторы могут принимать заявки.", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Получаем сервер и пользователя
+            guild = interaction.guild
+            applicant = await guild.fetch_member(self.applicant_id)
+            
+            if not applicant:
+                await interaction.followup.send(f"Ошибка: Пользователь не найден на сервере.", ephemeral=True)
+                return
+            
+            # Выдаем роль "Игрок"
+            player_role = guild.get_role(PLAYER_ROLE_ID)
+            if player_role:
+                await applicant.add_roles(player_role, reason="Заявка одобрена администратором")
+                
+                # Отправляем сообщение в канал одобренных заявок
+                approved_channel = client.get_channel(APPROVED_CHANNEL_ID)
+                if approved_channel:
+                    approved_embed = discord.Embed(
+                        title="Новый игрок одобрен",
+                        color=discord.Color.green()
+                    )
+                    approved_embed.add_field(name="Ник в Minecraft", value=self.applicant_nickname, inline=True)
+                    approved_embed.add_field(name="Возраст", value=self.applicant_age, inline=True)
+                    approved_embed.set_footer(text=f"Заявка одобрена {interaction.user.display_name}")
+                    
+                    await approved_channel.send(embed=approved_embed)
+                
+                # Отправляем сообщение пользователю в личку
+                try:
+                    await applicant.send("Ваша заявка на сервер была одобрена администратором! Добро пожаловать!")
+                except discord.Forbidden:
+                    await interaction.followup.send("Заявка одобрена, но не удалось отправить личное сообщение пользователю.", ephemeral=True)
+                
+                # Обновляем сообщение с заявкой
+                await interaction.message.edit(content=f"{interaction.message.content}\n\n**Заявка ОДОБРЕНА администратором {interaction.user.mention}**", view=None)
+                
+                await interaction.followup.send(f"Заявка пользователя {applicant.mention} успешно одобрена.", ephemeral=True)
+            else:
+                await interaction.followup.send(f"Ошибка: Роль игрока не найдена.", ephemeral=True)
+        
+        except Exception as e:
+            await interaction.followup.send(f"Произошла ошибка при обработке заявки: {e}", ephemeral=True)
+    
+    @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.danger, custom_id="reject_application")
+    async def reject_application_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Получаем пользователя
+            guild = interaction.guild
+            applicant = await guild.fetch_member(self.applicant_id)
+            
+            if applicant:
+                # Отправляем сообщение пользователю в личку
+                try:
+                    await applicant.send("Ваша заявка на сервер была отклонена. Вы можете попробовать подать заявку повторно через некоторое время.")
+                except discord.Forbidden:
+                    await interaction.followup.send("Заявка отклонена, но не удалось отправить личное сообщение пользователю.", ephemeral=True)
+            
+            # Обновляем сообщение с заявкой
+            await interaction.message.edit(content=f"{interaction.message.content}\n\n**Заявка ОТКЛОНЕНА администратором {interaction.user.mention}**", view=None)
+            
+            await interaction.followup.send("Заявка успешно отклонена.", ephemeral=True)
+        
+        except Exception as e:
+            await interaction.followup.send(f"Произошла ошибка при отклонении заявки: {e}", ephemeral=True)
 
 # Ticket Modal class
 class TicketModal(Modal, title="Заявка на сервер"):
@@ -150,32 +240,10 @@ class TicketModal(Modal, title="Заявка на сервер"):
                 pass
             return  # Завершаем функцию, не выдаем роль
             
-        # ТОЛЬКО если прошли все проверки ЛС, выдаем роль
+        # ТОЛЬКО если прошли все проверки ЛС, отправляем заявку администраторам
         if dm_completed:
-            print(f"Начинаем процесс выдачи роли и отправки заявки для {user.name}")
+            print(f"Начинаем процесс отправки заявки для {user.name}")
             success_message = "Ваша заявка успешно отправлена администрации!"
-            
-            # Выдаем роль пользователю
-            try:
-                # ID роли для выдачи
-                ROLE_ID = 1359775270843842653
-                
-                # Получаем объект сервера
-                guild = interaction.guild
-                if guild:
-                    # Получаем объект роли
-                    role = guild.get_role(ROLE_ID)
-                    if role:
-                        # Выдаем роль пользователю
-                        await interaction.user.add_roles(role, reason="Подал заявку на сервер")
-                        print(f"Пользователю {interaction.user.name} выдана роль {role.name}")
-                        success_message += f" Вам выдана роль \"{role.name}\"!"
-                    else:
-                        print(f"Ошибка: Роль с ID {ROLE_ID} не найдена на сервере {guild.name}")
-                else:
-                    print(f"Ошибка: Не удалось получить объект сервера для пользователя {interaction.user.name}")
-            except Exception as e:
-                print(f"Ошибка при выдаче роли пользователю {interaction.user.name}: {e}")
             
             try:
                 await interaction.followup.send(success_message, ephemeral=True)
@@ -186,10 +254,11 @@ class TicketModal(Modal, title="Заявка на сервер"):
             # Add timestamp and user ID
             embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
             
-            # Send the embed to the staff channel
+            # Send the embed to the staff channel with buttons
             if staff_channel:
                 try:
-                    await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed)
+                    view = ApplicationActionView(interaction.user.id, self.nickname.value, self.age.value)
+                    await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed, view=view)
                     print(f"Заявка для {user.name} успешно отправлена в канал администрации")
                 except Exception as e:
                     print(f"Ошибка при отправке заявки в канал администрации: {e}")
