@@ -78,7 +78,8 @@ class ApplicationActionView(View):
                 
                 # Отправляем сообщение пользователю в личку
                 try:
-                    await applicant.send("Ваша заявка на сервер была одобрена администратором! Добро пожаловать!")
+                    server_ip = "minestoryvanilla.imba.land"
+                    await applicant.send(f"Ваша заявка на сервер была одобрена администратором! Добро пожаловать!\n\nIP сервера: **{server_ip}**\nДобро пожаловать в наше сообщество!")
                 except discord.Forbidden:
                     await interaction.followup.send("Заявка одобрена, но не удалось отправить личное сообщение пользователю.", ephemeral=True)
                 
