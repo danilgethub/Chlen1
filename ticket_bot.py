@@ -74,7 +74,7 @@ class ApplicationActionView(View):
                     approved_embed.add_field(name="Возраст", value=self.applicant_age, inline=True)
                     approved_embed.set_footer(text=f"Заявка одобрена {interaction.user.display_name}")
                     
-                    await approved_channel.send(embed=approved_embed)
+                    await approved_channel.send(content=f"Заявка от <@{self.applicant_id}> принята:", embed=approved_embed)
                 
                 # Отправляем сообщение пользователю в личку
                 try:
