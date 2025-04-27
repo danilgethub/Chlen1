@@ -202,7 +202,7 @@ class TicketModal(Modal, title="Заявка на сервер"):
                 # Увеличиваем таймаут до 10 минут для большего комфорта пользователей
                 griefing_response = await client.wait_for(
                     'message',
-                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel) and m.channel.recipient.id == user.id,
+                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
                     timeout=600.0
                 )
                 embed.add_field(name="Отношение к грифу", value=griefing_response.content, inline=False)
@@ -227,7 +227,7 @@ class TicketModal(Modal, title="Заявка на сервер"):
                 # Увеличиваем таймаут до 10 минут
                 source_response = await client.wait_for(
                     'message',
-                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel) and m.channel.recipient.id == user.id,
+                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
                     timeout=600.0
                 )
                 embed.add_field(name="Источник информации о сервере", value=source_response.content, inline=False)
@@ -321,12 +321,13 @@ class TicketView(View):
         try:
             # Send the modal to the user
             await interaction.response.send_modal(TicketModal())
+            logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Подать заявку'")
         except Exception as e:
-            print(f"Ошибка при отправке модального окна: {e}")
+            logger.error(f"Ошибка при отправке модального окна: {e}")
             try:
                 await interaction.response.send_message("Произошла ошибка при открытии формы. Пожалуйста, попробуйте еще раз или сообщите администратору.", ephemeral=True)
-            except:
-                pass
+            except Exception as follow_up_error:
+                logger.error(f"Ошибка при отправке сообщения об ошибке: {follow_up_error}")
 
 # View с кнопками для выбора типа жалобы
 class ReportTypeView(View):
@@ -359,6 +360,7 @@ async def create_ticket_channel(interaction: discord.Interaction, ticket_type):
     
     # Определение названия канала
     channel_name = f"тикет-{ticket_type}-{user.name}"
+    logger.info(f"Создание тикета {channel_name} для пользователя {user.name}")
     
     try:
         # Получение роли администратора
@@ -436,9 +438,10 @@ async def create_ticket_channel(interaction: discord.Interaction, ticket_type):
         
         # Ответ пользователю
         await interaction.followup.send(f"Тикет создан! Перейдите в канал {ticket_channel.mention}", ephemeral=True)
+        logger.info(f"Тикет {channel_name} успешно создан")
         
     except Exception as e:
-        print(f"Ошибка при создании тикета: {e}")
+        logger.error(f"Ошибка при создании тикета: {e}")
         await interaction.followup.send(f"Произошла ошибка при создании тикета: {e}", ephemeral=True)
 
 # View с кнопкой для закрытия тикета
@@ -460,6 +463,7 @@ class CloseTicketView(View):
         
         # Отправка сообщения перед закрытием
         await interaction.channel.send("Тикет закрывается...")
+        logger.info(f"Закрытие тикета {interaction.channel.name} администратором {interaction.user.name}")
         
         # Задержка для чтения сообщения
         await asyncio.sleep(3)
@@ -467,8 +471,9 @@ class CloseTicketView(View):
         # Удаление канала
         try:
             await interaction.channel.delete()
+            logger.info(f"Тикет {interaction.channel.name} успешно закрыт")
         except Exception as e:
-            print(f"Ошибка при удалении канала тикета: {e}")
+            logger.error(f"Ошибка при удалении канала тикета: {e}")
             await interaction.channel.send(f"Ошибка при закрытии тикета: {e}")
 
 # Bot ready event
