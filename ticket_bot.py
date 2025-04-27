@@ -3,13 +3,25 @@ from discord import app_commands
 from discord.ui import Button, View, Modal, TextInput
 import asyncio
 import os
+import logging
+
+# Настройка логгирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger('ticket_bot')
 
 # Получаем токен напрямую из переменной окружения
 TOKEN = os.getenv("TOKEN")
 
 if not TOKEN:
-    print("ОШИБКА: Токен бота не указан в переменных окружения!")
-    print("Добавьте переменную TOKEN в настройках платформы Railway")
+    logger.error("ОШИБКА: Токен бота не указан в переменных окружения!")
+    logger.error("Добавьте переменную TOKEN в настройках платформы Railway")
     exit(1)
 
 # Define channel IDs
@@ -187,70 +199,89 @@ class TicketModal(Modal, title="Заявка на сервер"):
             # Ask about griefing
             griefing_question = await user.send("Как вы относитесь к грифу?")
             try:
+                # Увеличиваем таймаут до 10 минут для большего комфорта пользователей
                 griefing_response = await client.wait_for(
                     'message',
-                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
-                    timeout=300.0
+                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel) and m.channel.recipient.id == user.id,
+                    timeout=600.0
                 )
                 embed.add_field(name="Отношение к грифу", value=griefing_response.content, inline=False)
+                logger.info(f"Пользователь {user.name} ответил на первый вопрос: {griefing_response.content}")
             except asyncio.TimeoutError:
-                embed.add_field(name="Отношение к грифу", value="Не ответил в течение 5 минут", inline=False)
+                embed.add_field(name="Отношение к грифу", value="Не ответил в течение 10 минут", inline=False)
                 await user.send("Время ожидания истекло. Ваша заявка отклонена. Повторите попытку и ответьте на все вопросы.")
+                logger.warning(f"Таймаут ожидания ответа на первый вопрос от {user.name}")
                 return  # Завершаем функцию, не выдаем роль
+            except Exception as e:
+                logger.error(f"Ошибка при получении ответа на вопрос о грифе: {e}")
+                embed.add_field(name="Отношение к грифу", value=f"Ошибка: {e}", inline=False)
+                await user.send("Произошла ошибка при обработке вашего ответа. Пожалуйста, попробуйте еще раз.")
+                return
+            
+            # Небольшая задержка между вопросами
+            await asyncio.sleep(1)
             
             # Ask about how they found the server
             await user.send("Откуда узнали о сервере?")
             try:
+                # Увеличиваем таймаут до 10 минут
                 source_response = await client.wait_for(
                     'message',
-                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel),
-                    timeout=300.0
+                    check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel) and m.channel.recipient.id == user.id,
+                    timeout=600.0
                 )
                 embed.add_field(name="Источник информации о сервере", value=source_response.content, inline=False)
-                print(f"Пользователь {user.name} ответил на второй вопрос: {source_response.content}")
+                logger.info(f"Пользователь {user.name} ответил на второй вопрос: {source_response.content}")
             except asyncio.TimeoutError:
-                embed.add_field(name="Источник информации о сервере", value="Не ответил в течение 5 минут", inline=False)
+                embed.add_field(name="Источник информации о сервере", value="Не ответил в течение 10 минут", inline=False)
                 await user.send("Время ожидания истекло. Ваша заявка отклонена. Повторите попытку и ответьте на все вопросы.")
-                print(f"Таймаут ожидания ответа на второй вопрос от {user.name}")
+                logger.warning(f"Таймаут ожидания ответа на второй вопрос от {user.name}")
                 return  # Завершаем функцию, не выдаем роль
+            except Exception as e:
+                logger.error(f"Ошибка при получении ответа на вопрос об источнике: {e}")
+                embed.add_field(name="Источник информации о сервере", value=f"Ошибка: {e}", inline=False)
+                await user.send("Произошла ошибка при обработке вашего ответа. Пожалуйста, попробуйте еще раз.")
+                return
             
             # Thank the user
             try:
                 await user.send("Спасибо за ваши ответы! Ваша заявка полностью отправлена администрации.")
-                print(f"Отправлено благодарственное сообщение пользователю {user.name}")
+                logger.info(f"Отправлено благодарственное сообщение пользователю {user.name}")
                 dm_completed = True
-                print(f"Установлен флаг dm_completed = True для {user.name}")
+                logger.info(f"Установлен флаг dm_completed = True для {user.name}")
             except Exception as e:
-                print(f"Ошибка при отправке благодарственного сообщения: {e}")
-                # Даже если не удалось отправить благодарственное сообщение, процесс не должен прерываться
+                logger.error(f"Ошибка при отправке благодарственного сообщения: {e}")
+                # Даже если не удалось отправить благодарственное сообщение, продолжаем обработку
                 dm_completed = True
+                logger.warning(f"Установлен флаг dm_completed = True для {user.name} несмотря на ошибку")
         
         except discord.Forbidden:
             # Cannot send DM to the user
             try:
                 await interaction.followup.send("Не удалось отправить вам личное сообщение. Пожалуйста, откройте личные сообщения в настройках приватности Discord и попробуйте снова.", ephemeral=True)
-            except:
-                pass
+                logger.warning(f"Не удалось отправить DM пользователю {user.name} - сообщения закрыты")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке сообщения о закрытых DM: {e}")
             return  # Завершаем функцию, не выдаем роль
         except Exception as e:
             # Other errors
-            print(f"Ошибка при отправке DM: {e}")
+            logger.error(f"Ошибка при отправке DM: {e}")
             try:
                 await interaction.followup.send("Произошла ошибка при обработке заявки. Пожалуйста, попробуйте позже.", ephemeral=True)
-            except:
-                pass
+            except Exception as follow_up_error:
+                logger.error(f"Ошибка при отправке сообщения об ошибке: {follow_up_error}")
             return  # Завершаем функцию, не выдаем роль
             
         # ТОЛЬКО если прошли все проверки ЛС, отправляем заявку администраторам
         if dm_completed:
-            print(f"Начинаем процесс отправки заявки для {user.name}")
+            logger.info(f"Начинаем процесс отправки заявки для {user.name}")
             success_message = "Ваша заявка успешно отправлена администрации!"
             
             try:
                 await interaction.followup.send(success_message, ephemeral=True)
-                print(f"Отправлено уведомление об успешной подаче заявки для {user.name}")
+                logger.info(f"Отправлено уведомление об успешной подаче заявки для {user.name}")
             except Exception as e:
-                print(f"Ошибка при отправке уведомления об успешной подаче заявки: {e}")
+                logger.error(f"Ошибка при отправке уведомления об успешной подаче заявки: {e}")
             
             # Add timestamp and user ID
             embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
@@ -260,13 +291,25 @@ class TicketModal(Modal, title="Заявка на сервер"):
                 try:
                     view = ApplicationActionView(interaction.user.id, self.nickname.value, self.age.value)
                     await staff_channel.send(content=f"<@{interaction.user.id}> подал заявку:", embed=embed, view=view)
-                    print(f"Заявка для {user.name} успешно отправлена в канал администрации")
+                    logger.info(f"Заявка для {user.name} успешно отправлена в канал администрации")
                 except Exception as e:
-                    print(f"Ошибка при отправке заявки в канал администрации: {e}")
+                    logger.error(f"Ошибка при отправке заявки в канал администрации: {e}")
+                    try:
+                        await user.send("Произошла ошибка при отправке вашей заявки администрации. Пожалуйста, свяжитесь с администратором сервера.")
+                    except:
+                        pass
             else:
-                print(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
+                logger.error(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
+                try:
+                    await user.send("Не удалось отправить заявку из-за ошибки конфигурации. Пожалуйста, свяжитесь с администратором сервера.")
+                except:
+                    pass
         else:
-            print(f"Пользователь {user.name} не завершил процесс подачи заявки (dm_completed = False)")
+            logger.warning(f"Пользователь {user.name} не завершил процесс подачи заявки (dm_completed = False)")
+            try:
+                await interaction.followup.send("Ваша заявка не была отправлена из-за проблем с личными сообщениями.", ephemeral=True)
+            except:
+                pass
 
 # Button View class
 class TicketView(View):
@@ -431,20 +474,20 @@ class CloseTicketView(View):
 # Bot ready event
 @client.event
 async def on_ready():
-    print(f'Бот {client.user} запущен и готов к работе!')
+    logger.info(f'Бот {client.user} запущен и готов к работе!')
     
     # Sync commands
     try:
         await tree.sync()
-        print("Команды успешно синхронизированы")
+        logger.info("Команды успешно синхронизированы")
     except Exception as e:
-        print(f"Ошибка при синхронизации команд: {e}")
+        logger.error(f"Ошибка при синхронизации команд: {e}")
     
     # Get the ticket channel
     ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
     
     if ticket_channel:
-        print(f"Канал для заявок найден: {ticket_channel.name}")
+        logger.info(f"Канал для заявок найден: {ticket_channel.name}")
         # Проверяем, есть ли уже сообщение с кнопкой от этого бота
         has_message = False
         try:
@@ -455,7 +498,7 @@ async def on_ready():
                     has_message = True
                     view = TicketView()
                     message = await message.edit(view=view)
-                    print(f"Обновлено существующее сообщение с кнопкой")
+                    logger.info(f"Обновлено существующее сообщение с кнопкой")
                     break
             
             # Если нет рабочего сообщения с кнопкой, создаем новое
@@ -472,19 +515,19 @@ async def on_ready():
                 
                 # Send the embed with the view
                 await ticket_channel.send(embed=embed, view=view)
-                print(f"Отправлено новое сообщение с кнопкой в канал {TICKET_CHANNEL_ID}")
+                logger.info(f"Отправлено новое сообщение с кнопкой в канал {TICKET_CHANNEL_ID}")
         except Exception as e:
-            print(f"Ошибка при обновлении сообщения с кнопкой: {e}")
+            logger.error(f"Ошибка при обновлении сообщения с кнопкой: {e}")
             # Не создаем новое сообщение при ошибке во избежание дублей
-            print(f"Пропущено создание нового сообщения для предотвращения дублирования")
+            logger.info(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
-        print(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
+        logger.error(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
     
     # Получение канала для жалоб
     report_channel = client.get_channel(REPORT_CHANNEL_ID)
     
     if report_channel:
-        print(f"Канал для жалоб найден: {report_channel.name}")
+        logger.info(f"Канал для жалоб найден: {report_channel.name}")
         # Проверяем, есть ли уже сообщение с кнопками жалоб от этого бота
         has_report_message = False
         try:
@@ -495,7 +538,7 @@ async def on_ready():
                     has_report_message = True
                     view = ReportTypeView()
                     message = await message.edit(view=view)
-                    print(f"Обновлено существующее сообщение с кнопками для жалоб")
+                    logger.info(f"Обновлено существующее сообщение с кнопками для жалоб")
                     break
             
             # Если нет рабочего сообщения с кнопками, создаем новое
@@ -512,12 +555,43 @@ async def on_ready():
                 
                 # Send the embed with the view
                 await report_channel.send(embed=embed, view=view)
-                print(f"Отправлено новое сообщение с кнопками жалоб в канал {REPORT_CHANNEL_ID}")
+                logger.info(f"Отправлено новое сообщение с кнопками жалоб в канал {REPORT_CHANNEL_ID}")
         except Exception as e:
-            print(f"Ошибка при обновлении сообщения с кнопками жалоб: {e}")
-            print(f"Пропущено создание нового сообщения для предотвращения дублирования")
+            logger.error(f"Ошибка при обновлении сообщения с кнопками жалоб: {e}")
+            logger.info(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
-        print(f"Error: Report channel with ID {REPORT_CHANNEL_ID} not found")
+        logger.error(f"Error: Report channel with ID {REPORT_CHANNEL_ID} not found")
+
+# Добавляем обработчики для мониторинга соединения
+@client.event
+async def on_connect():
+    logger.info("Бот подключился к Discord")
+
+@client.event
+async def on_disconnect():
+    logger.warning("Бот отключился от Discord. Ожидание переподключения...")
+
+@client.event
+async def on_resumed():
+    logger.info("Сессия успешно восстановлена")
+
+@client.event
+async def on_error(event, *args, **kwargs):
+    logger.error(f"Произошла ошибка в событии {event}: {args}, {kwargs}")
+    import traceback
+    traceback.print_exc()
+
+@client.event 
+async def on_application_command_error(interaction, error):
+    logger.error(f"Ошибка при выполнении команды: {error}")
+    import traceback
+    traceback.print_exc()
+    try:
+        await interaction.response.send_message(f"Произошла ошибка: {error}", ephemeral=True)
+    except discord.errors.InteractionResponded:
+        await interaction.followup.send(f"Произошла ошибка: {error}", ephemeral=True)
+    except Exception as e:
+        logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
 
 # Команда для отправки сообщения с кнопками жалоб
 @tree.command(name="send_report_buttons", description="Отправить сообщение с кнопками для создания жалоб")
@@ -557,20 +631,11 @@ async def send_report_buttons(interaction: discord.Interaction):
                 await interaction.response.send_message("Новое сообщение с кнопками жалоб отправлено!", ephemeral=True)
             
         except Exception as e:
-            print(f"Ошибка при отправке сообщения с кнопками жалоб: {e}")
+            logger.error(f"Ошибка при отправке сообщения с кнопками жалоб: {e}")
             await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
     else:
         # Respond with an error
         await interaction.response.send_message(f"Ошибка: канал с ID {REPORT_CHANNEL_ID} не найден", ephemeral=True)
-
-@client.event
-async def on_error(event, *args, **kwargs):
-    print(f"Произошла ошибка в событии {event}: {args}, {kwargs}")
-
-@client.event 
-async def on_application_command_error(interaction, error):
-    print(f"Ошибка при выполнении команды: {error}")
-    await interaction.response.send_message(f"Произошла ошибка: {error}", ephemeral=True)
 
 # Command to send a new ticket message - для заявок на вступление на сервер
 @tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки на вступление")
@@ -610,11 +675,18 @@ async def send_ticket(interaction: discord.Interaction):
                 await interaction.response.send_message("Новое сообщение с кнопкой заявки отправлено!", ephemeral=True)
             
         except Exception as e:
-            print(f"Ошибка при отправке сообщения с кнопкой: {e}")
+            logger.error(f"Ошибка при отправке сообщения с кнопкой: {e}")
             await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
     else:
         # Respond with an error
         await interaction.response.send_message(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
 
 # Start the bot
-client.run(TOKEN) 
+try:
+    client.run(TOKEN, reconnect=True, log_handler=None)
+except discord.errors.LoginFailure:
+    logger.critical("Неправильный токен бота! Пожалуйста, проверьте токен и перезапустите бота.")
+except Exception as e:
+    logger.critical(f"Критическая ошибка при запуске бота: {e}")
+    import traceback
+    traceback.print_exc() 
