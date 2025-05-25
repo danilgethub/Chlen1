@@ -31,7 +31,7 @@ REPORT_CHANNEL_ID = 1362794547012436158  # Channel where report button will be d
 APPROVED_CHANNEL_ID = 1365696815403630726  # Channel where approved applications will be sent
 
 # Define role IDs
-PLAYER_ROLE_ID = 1359775270843842653  # "Игрок" role ID 
+PLAYER_ROLE_ID = 1376274807284301824  # "Игрок" role ID 
 
 # Define intents
 intents = discord.Intents.default()
