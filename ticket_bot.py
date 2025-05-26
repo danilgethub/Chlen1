@@ -694,4 +694,4 @@ except discord.errors.LoginFailure:
 except Exception as e:
     logger.critical(f"Критическая ошибка при запуске бота: {e}")
     import traceback
-    traceback.print_exc() 
+    traceback.print_exc()
