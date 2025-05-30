@@ -46,9 +46,8 @@ tree = app_commands.CommandTree(client)
 # View с кнопками для информационного канала
 class InfoView(View):
     def __init__(self):
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(label="Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
+        super().__init__()
+        self.add_item(Button(label="Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/"))
     async def website_button(self, interaction: discord.Interaction, button: Button):
         # Кнопка с URL автоматически перенаправляет на сайт
         pass
