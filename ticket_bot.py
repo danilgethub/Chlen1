@@ -29,6 +29,7 @@ TICKET_CHANNEL_ID = 1359611434862120960  # Channel where ticket button will be d
 STAFF_CHANNEL_ID = 1362471645922463794   # Channel where completed tickets will be sent
 REPORT_CHANNEL_ID = 1362794547012436158  # Channel where report button will be displayed
 APPROVED_CHANNEL_ID = 1365696815403630726  # Channel where approved applications will be sent
+INFO_CHANNEL_ID = 1361046702404145193  # Channel where info message with buttons will be displayed
 
 # Define role IDs
 PLAYER_ROLE_ID = 1376274807284301824  # "Игрок" role ID 
@@ -695,3 +696,105 @@ except Exception as e:
     logger.critical(f"Критическая ошибка при запуске бота: {e}")
     import traceback
     traceback.print_exc()
+# View с кнопками для информационного канала
+class InfoView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
+    async def website_button(self, interaction: discord.Interaction, button: Button):
+        # Кнопка с URL автоматически перенаправляет на сайт
+        pass
+    
+    @discord.ui.button(label="Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
+    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
+        # Отправляем информацию о том, как зайти на сервер
+        how_to_join_text = """🎮 | Что-бы начать играть нужно выполнить пару легких действий! 
+Подать заявку на сервер., 
+ 
+Что бы это сделать нужно создать заявку,используйте для этого канал ⁠🎫・заявка 
+ 
+2.Скачать соответствующее моды 
+Plasmovoice - `https://modrinth.com/plugin/plasmo-voice/versions`  
+
+3.IP 
+После подачи заявки, БОТ "Улей", напишет всю нужную вам информацию."""
+        
+        await interaction.response.send_message(how_to_join_text, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
+
+# Функция для отправки или обновления информационного сообщения
+async def send_or_update_info_message(channel):
+    if not channel:
+        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
+        return False
+    
+    # Проверяем, есть ли уже сообщение с кнопками
+    has_message = False
+    try:
+        # Проверяем сообщения в канале
+        async for message in channel.history(limit=20):
+            if message.author.id == client.user.id and len(message.components) > 0:
+                # Если нашли сообщение с кнопками, обновляем его
+                has_message = True
+                view = InfoView()
+                
+                # Получение информационного канала
+                # Команда для отправки информационного сообщения с кнопками
+                @tree.command(name="send_info", description="Отправить информационное сообщение с кнопками")
+                @app_commands.default_permissions(administrator=True)
+                 async def send_info(interaction: discord.Interaction):
+                    # Get the info channel
+                    info_channel = client.get_channel(INFO_CHANNEL_ID)
+                    
+                    if info_channel:
+                        # Отправляем или обновляем информационное сообщение
+                        success = await send_or_update_info_message(info_channel)
+                        
+                        if success:
+                            await interaction.response.send_message("Информационное сообщение отправлено/обновлено!", ephemeral=True)
+                        else:
+                            await interaction.response.send_message("Произошла ошибка при отправке/обновлении информационного сообщения.", ephemeral=True)
+                    else:
+                        # Respond with an error
+                        await interaction.response.send_message(f"Ошибка: канал с ID {INFO_CHANNEL_ID} не найден", ephemeral=True)
+                
+                # Проверяем, есть ли изображение в сообщении
+                has_image = False
+                if message.attachments:
+                    for attachment in message.attachments:
+                        if attachment.filename == "info.jpg":
+                            has_image = True
+                            break
+                
+                # Если нет изображения, добавляем его
+                if not has_image:
+                    with open("info.jpg", "rb") as f:
+                        image = discord.File(f, filename="info.jpg")
+                        new_message = await channel.send(file=image)
+                        await message.delete()
+                        message = new_message
+                
+                # Обновляем сообщение с кнопками
+                content = "MIneStory - это приватный ванильный сервер,на котором можно расслабиться, которого дополняют соответствующие плагины\n🎮 | Сервер на версии 1.21+. На сервер установлены следующие плагины:ViaVersion, Plasmovoice."
+                await message.edit(content=content, view=view)
+                logger.info(f"Обновлено существующее информационное сообщение")
+                return True
+        
+        # Если сообщение не найдено, создаем новое
+        if not has_message:
+            # Отправляем изображение
+            with open("info.jpg", "rb") as f:
+                image = discord.File(f, filename="info.jpg")
+                await channel.send(file=image)
+            
+            # Отправляем текст с кнопками
+            content = "MIneStory - это приватный ванильный сервер,на котором можно расслабиться, которого дополняют соответствующие плагины\n🎮 | Сервер на версии 1.21+. На сервер установлены следующие плагины:ViaVersion, Plasmovoice."
+            view = InfoView()
+            await channel.send(content=content, view=view)
+            logger.info(f"Отправлено новое информационное сообщение")
+            return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
+        return False
