@@ -29,7 +29,7 @@ TICKET_CHANNEL_ID = 1359611434862120960  # Channel where ticket button will be d
 STAFF_CHANNEL_ID = 1362471645922463794   # Channel where completed tickets will be sent
 REPORT_CHANNEL_ID = 1362794547012436158  # Channel where report button will be displayed
 APPROVED_CHANNEL_ID = 1365696815403630726  # Channel where approved applications will be sent
-INFO_CHANNEL_ID = 1361046702404145193  # Channel where info message with buttons will be displayed
+INFO_CHANNEL_ID =   # Channel where info message with buttons will be displayed
 
 # Define role IDs
 PLAYER_ROLE_ID = 1376274807284301824  # "Игрок" role ID 
