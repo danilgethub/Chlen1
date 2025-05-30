@@ -43,6 +43,86 @@ intents.members = True  # Добавляем интент для работы с
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+# View с кнопками для информационного канала
+class InfoView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
+    async def website_button(self, interaction: discord.Interaction, button: Button):
+        # Кнопка с URL автоматически перенаправляет на сайт
+        pass
+    
+    @discord.ui.button(label="Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
+    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
+        # Отправляем информацию о том, как зайти на сервер
+        how_to_join_text = "Чтобы зайти на сервер, выполните следующие шаги:\n\n1. Запустите Minecraft версии 1.21+\n2. Перейдите в раздел 'Сетевая игра'\n3. Нажмите 'Добавить сервер'\n4. Введите IP: minestoryvanilla.imba.land\n5. Нажмите 'Готово' и подключитесь к серверу"
+        
+        await interaction.response.send_message(how_to_join_text, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
+
+# Функция для отправки или обновления информационного сообщения
+async def send_or_update_info_message(channel):
+    if not channel:
+        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
+        return False
+    
+    # Проверяем, есть ли уже сообщение с кнопками
+    has_message = False
+    try:
+        # Проверяем сообщения в канале
+        async for message in channel.history(limit=20):
+            if message.author.id == client.user.id and len(message.components) > 0:
+                # Если нашли сообщение с кнопками, обновляем его
+                has_message = True
+                view = InfoView()
+                
+                # Проверяем, есть ли изображение в сообщении
+                has_image = False
+                if message.attachments:
+                    for attachment in message.attachments:
+                        if attachment.filename == "info.jpg":
+                            has_image = True
+                            break
+                
+                # Если нет изображения, добавляем его (если файл существует)
+                if not has_image:
+                    try:
+                        with open("info.jpg", "rb") as f:
+                            image = discord.File(f, filename="info.jpg")
+                            new_message = await channel.send(file=image)
+                            await message.delete()
+                            message = new_message
+                    except FileNotFoundError:
+                        logger.warning("Файл info.jpg не найден, пропускаем добавление изображения")
+                
+                # Обновляем сообщение с кнопками
+                content = "MIneStory - это приватный ванильный сервер,на котором можно расслабиться, которого дополняют соответствующие плагины\n🎮 | Сервер на версии 1.21+. На сервер установлены следующие плагины:ViaVersion, Plasmovoice."
+                await message.edit(content=content, view=view)
+                logger.info(f"Обновлено существующее информационное сообщение")
+                return True
+        
+        # Если сообщение не найдено, создаем новое
+        if not has_message:
+            # Отправляем изображение (если файл существует)
+            try:
+                with open("info.jpg", "rb") as f:
+                    image = discord.File(f, filename="info.jpg")
+                    await channel.send(file=image)
+            except FileNotFoundError:
+                logger.warning("Файл info.jpg не найден, пропускаем отправку изображения")
+            
+            # Отправляем текст с кнопками
+            content = "MIneStory - это приватный ванильный сервер,на котором можно расслабиться, которого дополняют соответствующие плагины\n🎮 | Сервер на версии 1.21+. На сервер установлены следующие плагины:ViaVersion, Plasmovoice."
+            view = InfoView()
+            await channel.send(content=content, view=view)
+            logger.info(f"Отправлено новое информационное сообщение")
+            return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
+        return False
+
 # Button View class для кнопок "Принять" и "Отклонить"
 class ApplicationActionView(View):
     def __init__(self, applicant_id, applicant_nickname, applicant_age):
