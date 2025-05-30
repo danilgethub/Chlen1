@@ -757,4 +757,3 @@ async def send_or_update_info_message(channel):
         
     except Exception as e:
         logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
-        return False
