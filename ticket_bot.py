@@ -500,7 +500,7 @@ async def on_ready():
             # Проверяем больше сообщений, чтобы точно найти существующее
             async for message in ticket_channel.history(limit=20):
                 if message.author.id == client.user.id and len(message.components) > 0:
-                    # Проверка работоспособности кнопки - если она интерактивная, оставляем
+                    # Проверяем работоспособности кнопки - если она интерактивная, оставляем
                     has_message = True
                     view = TicketView()
                     message = await message.edit(view=view)
@@ -540,7 +540,7 @@ async def on_ready():
             # Проверяем сообщения в канале
             async for message in report_channel.history(limit=20):
                 if message.author.id == client.user.id and len(message.components) > 0:
-                    # Проверка работоспособности кнопок - если они интерактивные, оставляем
+                    # Проверяем работоспособности кнопок - если они интерактивные, оставляем
                     has_report_message = True
                     view = ReportTypeView()
                     message = await message.edit(view=view)
