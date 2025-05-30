@@ -567,6 +567,20 @@ async def on_ready():
             logger.info(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
         logger.error(f"Error: Report channel with ID {REPORT_CHANNEL_ID} not found")
+    
+    # Получение информационного канала
+    info_channel = client.get_channel(INFO_CHANNEL_ID)
+    
+    if info_channel:
+        logger.info(f"Информационный канал найден: {info_channel.name}")
+        # Отправляем или обновляем информационное сообщение
+        success = await send_or_update_info_message(info_channel)
+        if success:
+            logger.info("Информационное сообщение успешно отправлено/обновлено при запуске бота")
+        else:
+            logger.error("Ошибка при отправке/обновлении информационного сообщения при запуске бота")
+    else:
+        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
 
 # Добавляем обработчики для мониторинга соединения
 @client.event
