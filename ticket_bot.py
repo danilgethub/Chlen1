@@ -599,49 +599,24 @@ async def on_application_command_error(interaction, error):
     except Exception as e:
         logger.error(f"Не удалось отправить сообщение об ошибке: {e}")
 
-# Команда для отправки сообщения с кнопками жалоб
-@tree.command(name="send_report_buttons", description="Отправить сообщение с кнопками для создания жалоб")
+# Команда для отправки информационного сообщения с кнопками
+@tree.command(name="send_info", description="Отправить информационное сообщение с кнопками")
 @app_commands.default_permissions(administrator=True)
-async def send_report_buttons(interaction: discord.Interaction):
-    # Get the report channel
-    report_channel = client.get_channel(REPORT_CHANNEL_ID)
+async def send_info(interaction: discord.Interaction):
+    # Get the info channel
+    info_channel = client.get_channel(INFO_CHANNEL_ID)
     
-    if report_channel:
-        # Проверяем, есть ли уже сообщение с кнопками
-        has_message = False
-        try:
-            # Проверяем сообщения в канале
-            async for message in report_channel.history(limit=20):
-                if message.author.id == client.user.id and len(message.components) > 0:
-                    # Если нашли сообщение с кнопками, обновляем его
-                    has_message = True
-                    view = ReportTypeView()
-                    await message.edit(view=view, embed=message.embeds[0] if message.embeds else None)
-                    await interaction.response.send_message("Существующее сообщение с кнопками жалоб обновлено!", ephemeral=True)
-                    break
-            
-            # Если сообщение не найдено, создаем новое
-            if not has_message:
-                # Create an embed for the report message
-                embed = discord.Embed(
-                    title="Система жалоб",
-                    description="Нажмите на одну из кнопок ниже, чтобы создать тикет с жалобой.",
-                    color=discord.Color.red()
-                )
-                
-                # Create a view with the report buttons
-                view = ReportTypeView()
-                
-                # Send the embed with the view
-                await report_channel.send(embed=embed, view=view)
-                await interaction.response.send_message("Новое сообщение с кнопками жалоб отправлено!", ephemeral=True)
-            
-        except Exception as e:
-            logger.error(f"Ошибка при отправке сообщения с кнопками жалоб: {e}")
-            await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
+    if info_channel:
+        # Отправляем или обновляем информационное сообщение
+        success = await send_or_update_info_message(info_channel)
+        
+        if success:
+            await interaction.response.send_message("Информационное сообщение отправлено/обновлено!", ephemeral=True)
+        else:
+            await interaction.response.send_message("Произошла ошибка при отправке/обновлении информационного сообщения.", ephemeral=True)
     else:
         # Respond with an error
-        await interaction.response.send_message(f"Ошибка: канал с ID {REPORT_CHANNEL_ID} не найден", ephemeral=True)
+        await interaction.response.send_message(f"Ошибка: канал с ID {INFO_CHANNEL_ID} не найден", ephemeral=True)
 
 # Command to send a new ticket message - для заявок на вступление на сервер
 @tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки на вступление")
@@ -738,26 +713,6 @@ async def send_or_update_info_message(channel):
                 # Если нашли сообщение с кнопками, обновляем его
                 has_message = True
                 view = InfoView()
-                
-                # Получение информационного канала
-                # Команда для отправки информационного сообщения с кнопками
-                @tree.command(name="send_info", description="Отправить информационное сообщение с кнопками")
-                @app_commands.default_permissions(administrator=True)
-                 async def send_info(interaction: discord.Interaction):
-                    # Get the info channel
-                    info_channel = client.get_channel(INFO_CHANNEL_ID)
-                    
-                    if info_channel:
-                        # Отправляем или обновляем информационное сообщение
-                        success = await send_or_update_info_message(info_channel)
-                        
-                        if success:
-                            await interaction.response.send_message("Информационное сообщение отправлено/обновлено!", ephemeral=True)
-                        else:
-                            await interaction.response.send_message("Произошла ошибка при отправке/обновлении информационного сообщения.", ephemeral=True)
-                    else:
-                        # Respond with an error
-                        await interaction.response.send_message(f"Ошибка: канал с ID {INFO_CHANNEL_ID} не найден", ephemeral=True)
                 
                 # Проверяем, есть ли изображение в сообщении
                 has_image = False
