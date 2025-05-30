@@ -29,6 +29,7 @@ TICKET_CHANNEL_ID = 1359611434862120960  # Channel where ticket button will be d
 STAFF_CHANNEL_ID = 1362471645922463794   # Channel where completed tickets will be sent
 REPORT_CHANNEL_ID = 1362794547012436158  # Channel where report button will be displayed
 APPROVED_CHANNEL_ID = 1365696815403630726  # Channel where approved applications will be sent
+INFO_CHANNEL_ID = 1361046702404145193    # Channel for server information
 
 # Define role IDs
 PLAYER_ROLE_ID = 1376274807284301824  # "Игрок" role ID 
@@ -41,6 +42,55 @@ intents.members = True  # Добавляем интент для работы с
 # Create bot client
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
+# Server Info Button View class для кнопок "Сайт" и "Как зайти"
+class ServerInfoView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        
+        # Добавляем кнопку "Сайт"
+        site_button = Button(
+            style=discord.ButtonStyle.url,
+            label="Сайт",
+            url="https://site20-production.up.railway.app/"
+        )
+        self.add_item(site_button)
+        
+        # Добавляем кнопку "Как зайти"
+        how_to_join_button = Button(
+            style=discord.ButtonStyle.primary,
+            label="Как зайти",
+            custom_id="how_to_join"
+        )
+        how_to_join_button.callback = self.how_to_join_button_callback
+        self.add_item(how_to_join_button)
+    
+    async def how_to_join_button_callback(self, interaction: discord.Interaction):
+        how_to_join_embed = discord.Embed(
+            title="Как начать играть на сервере",
+            description="🎮 | Что-бы начать играть нужно выполнить пару легких действий!",
+            color=discord.Color.blue()
+        )
+        
+        how_to_join_embed.add_field(
+            name="1. Подать заявку на сервер",
+            value="Что бы это сделать нужно создать заявку, используйте для этого канал ⁠🎫・заявка",
+            inline=False
+        )
+        
+        how_to_join_embed.add_field(
+            name="2. Скачать соответствующее моды",
+            value="Plasmovoice - https://modrinth.com/plugin/plasmo-voice/versions",
+            inline=False
+        )
+        
+        how_to_join_embed.add_field(
+            name="3. IP",
+            value="После подачи заявки, БОТ \"Улей\", напишет всю нужную вам информацию.",
+            inline=False
+        )
+        
+        await interaction.response.send_message(embed=how_to_join_embed, ephemeral=True)
 
 # Button View class для кнопок "Принять" и "Отклонить"
 class ApplicationActionView(View):
@@ -685,6 +735,48 @@ async def send_ticket(interaction: discord.Interaction):
     else:
         # Respond with an error
         await interaction.response.send_message(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
+
+# Command to send server information message
+@tree.command(name="send_server_info", description="Отправить информацию о сервере MineStory с кнопками")
+@app_commands.default_permissions(administrator=True)
+async def send_server_info(interaction: discord.Interaction):
+    # Get the info channel
+    info_channel = client.get_channel(INFO_CHANNEL_ID)
+    
+    if info_channel:
+        try:
+            # Проверяем, есть ли уже сообщение информации в канале
+            has_message = False
+            async for message in info_channel.history(limit=20):
+                if message.author.id == client.user.id and len(message.components) > 0:
+                    # Если нашли сообщение с кнопками, удаляем его
+                    await message.delete()
+                    break
+            
+            # Создаем embed сообщение с информацией
+            info_embed = discord.Embed(
+                title="MineStory",
+                description="MIneStory - это приватный ванильный сервер, на котором можно расслабиться, которого дополняют соответствующие плагины\n🎮 | Сервер на версии 1.21+. На сервер установлены следующие плагины: ViaVersion, Plasmovoice.",
+                color=discord.Color.green()
+            )
+            
+            # Добавляем изображение
+            file = discord.File("info.jpg", filename="info.jpg")
+            info_embed.set_image(url="attachment://info.jpg")
+            
+            # Создаем view с кнопками
+            view = ServerInfoView()
+            
+            # Отправляем сообщение с embed и кнопками
+            await info_channel.send(file=file, embed=info_embed, view=view)
+            await interaction.response.send_message("Информация о сервере MineStory успешно отправлена!", ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Ошибка при отправке информации о сервере: {e}")
+            await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
+    else:
+        # Отвечаем с ошибкой
+        await interaction.response.send_message(f"Ошибка: канал с ID {INFO_CHANNEL_ID} не найден", ephemeral=True)
 
 # Start the bot
 try:
