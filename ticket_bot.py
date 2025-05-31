@@ -43,167 +43,6 @@ intents.members = True  # Добавляем интент для работы с
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# View с кнопками для информационного канала
-class InfoView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(label="🌐 Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
-    async def website_button(self, interaction: discord.Interaction, button: Button):
-        # Кнопка с URL автоматически перенаправляет на сайт
-        pass
-    
-    @discord.ui.button(label="🎮 Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
-    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
-        # Создаем красивый embed для инструкции
-        embed = discord.Embed(
-            title="🎮 Как подключиться к серверу",
-            description="Следуйте этим простым шагам для подключения:",
-            color=0x00ff00
-        )
-        embed.add_field(
-            name="📋 Пошаговая инструкция:",
-            value="```\n1. Запустите Minecraft версии 1.21+\n2. Перейдите в раздел 'Сетевая игра'\n3. Нажмите 'Добавить сервер'\n4. Введите IP: minestoryvanilla.imba.land\n5. Нажмите 'Готово' и подключитесь```",
-            inline=False
-        )
-        embed.add_field(
-            name="⚡ IP адрес сервера:",
-            value="`minestoryvanilla.imba.land`",
-            inline=True
-        )
-        embed.add_field(
-            name="🔧 Версия:",
-            value="`1.21+`",
-            inline=True
-        )
-        embed.set_footer(text="Удачной игры! 🎉")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
-    
-    @discord.ui.button(label="📋 Правила", style=discord.ButtonStyle.secondary, custom_id="rules")
-    async def rules_button(self, interaction: discord.Interaction, button: Button):
-        # Создаем embed с правилами сервера
-        embed = discord.Embed(
-            title="📋 Правила сервера MineStory",
-            description="Соблюдение правил обязательно для всех игроков!",
-            color=0xffaa00
-        )
-        embed.add_field(
-            name="🚫 Запрещено:",
-            value="• Гриферство и разрушение чужих построек\n• Использование читов и модификаций\n• Оскорбления и токсичное поведение\n• Спам в чате\n• Кража предметов у других игроков",
-            inline=False
-        )
-        embed.add_field(
-            name="✅ Разрешено:",
-            value="• Строительство и творчество\n• Торговля между игроками\n• Совместные проекты\n• Помощь новичкам",
-            inline=False
-        )
-        embed.set_footer(text="За нарушение правил предусмотрены санкции! ⚠️")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Правила'")
-    
-    @discord.ui.button(label="ℹ️ О сервере", style=discord.ButtonStyle.secondary, custom_id="about_server")
-    async def about_server_button(self, interaction: discord.Interaction, button: Button):
-        # Создаем embed с информацией о сервере
-        embed = discord.Embed(
-            title="ℹ️ О сервере MineStory",
-            description="Узнайте больше о нашем сервере!",
-            color=0x0099ff
-        )
-        embed.add_field(
-            name="🎯 Тип сервера:",
-            value="Приватный ванильный сервер",
-            inline=True
-        )
-        embed.add_field(
-            name="👥 Сообщество:",
-            value="Дружелюбное и активное",
-            inline=True
-        )
-        embed.add_field(
-            name="🔧 Плагины:",
-            value="• ViaVersion - поддержка разных версий\n• PlasmoVoice - голосовой чат",
-            inline=False
-        )
-        embed.add_field(
-            name="🎮 Особенности:",
-            value="• Ванильный геймплей\n• Стабильная работа 24/7\n• Регулярные обновления\n• Активная администрация",
-            inline=False
-        )
-        embed.set_footer(text="Присоединяйтесь к нашему сообществу! 🎉")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'О сервере'")
-
-# Function to send or update info message
-async def send_or_update_info_message(channel):
-    if not channel:
-        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
-        return False
-    
-    # Создаем красивый embed для информационного сообщения
-    embed = discord.Embed(
-        title="🎮 MineStory - Ванильный Minecraft Сервер",
-        description="Добро пожаловать на наш приватный ванильный сервер! Здесь вы можете расслабиться и насладиться классическим Minecraft опытом.",
-        color=0x00ff88
-    )
-    
-    embed.add_field(
-        name="🌟 О сервере:",
-        value="MineStory - это уютное место для любителей ванильного Minecraft, где каждый игрок может проявить свою креативность и найти новых друзей.",
-        inline=False
-    )
-    
-    embed.add_field(
-        name="🔧 Версия и плагины:",
-        value="**Версия:** `1.21+`\n**Плагины:**\n• ViaVersion - поддержка разных версий\n• PlasmoVoice - голосовой чат",
-        inline=True
-    )
-    
-    embed.add_field(
-        name="🎯 IP адрес:",
-        value="`minestoryvanilla.imba.land`",
-        inline=True
-    )
-    
-    embed.add_field(
-        name="🎮 Что вас ждет:",
-        value="• Дружелюбное сообщество\n• Стабильная работа 24/7\n• Регулярные события\n• Активная администрация\n• Ванильный геймплей",
-        inline=False
-    )
-    
-    embed.set_footer(text="Нажмите на кнопки ниже для получения дополнительной информации! 👇")
-    embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1234567890/attachment.png")  # Можно добавить иконку сервера
-    
-    # Проверяем, есть ли уже сообщение с кнопками
-    has_message = False
-    try:
-        # Проверяем сообщения в канале
-        async for message in channel.history(limit=20):
-            if message.author.id == client.user.id and len(message.components) > 0:
-                # Если нашли сообщение с кнопками, обновляем его
-                has_message = True
-                view = InfoView()
-                
-                # Обновляем сообщение с новым embed и кнопками
-                await message.edit(embed=embed, view=view)
-                logger.info(f"Обновлено существующее информационное сообщение")
-                return True
-        
-        # Если сообщение не найдено, создаем новое
-        if not has_message:
-            # Отправляем embed с кнопками
-            view = InfoView()
-            await channel.send(embed=embed, view=view)
-            logger.info(f"Отправлено новое информационное сообщение")
-            return True
-        
-    except Exception as e:
-        logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
-        return False
-
 # Button View class для кнопок "Принять" и "Отклонить"
 class ApplicationActionView(View):
     def __init__(self, applicant_id, applicant_nickname, applicant_age):
@@ -478,130 +317,215 @@ class TicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.primary, custom_id="submit_ticket")
-    async def submit_ticket(self, interaction: discord.Interaction, button: Button):
-        # Check if user already has the player role
-        player_role = interaction.guild.get_role(PLAYER_ROLE_ID)
-        if player_role and player_role in interaction.user.roles:
-            await interaction.response.send_message("У вас уже есть роль игрока! Вы можете играть на сервере.", ephemeral=True)
-            return
-        
-        # Open the ticket modal
-        modal = TicketModal()
-        await interaction.response.send_modal(modal)
+    @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.primary, custom_id="ticket_button")
+    async def ticket_button(self, interaction: discord.Interaction, button: Button):
+        try:
+            # Send the modal to the user
+            await interaction.response.send_modal(TicketModal())
+            logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Подать заявку'")
+        except Exception as e:
+            logger.error(f"Ошибка при отправке модального окна: {e}")
+            try:
+                await interaction.response.send_message("Произошла ошибка при открытии формы. Пожалуйста, попробуйте еще раз или сообщите администратору.", ephemeral=True)
+            except Exception as follow_up_error:
+                logger.error(f"Ошибка при отправке сообщения об ошибке: {follow_up_error}")
 
-# Report Modal class
-class ReportModal(Modal, title="Жалоба на игрока"):
-    reported_player = TextInput(
-        label="Ник нарушителя",
-        placeholder="Введите ник игрока, на которого жалуетесь",
-        required=True,
-    )
-    
-    violation_type = TextInput(
-        label="Тип нарушения",
-        placeholder="Например: гриф, читы, оскорбления",
-        required=True,
-    )
-    
-    description = TextInput(
-        label="Описание нарушения",
-        placeholder="Подробно опишите что произошло",
-        required=True,
-        style=discord.TextStyle.paragraph,
-    )
-    
-    evidence = TextInput(
-        label="Доказательства (ссылки на скриншоты/видео)",
-        placeholder="Вставьте ссылки на доказательства (необязательно)",
-        required=False,
-        style=discord.TextStyle.paragraph,
-    )
-    
-    def __init__(self):
-        super().__init__(title="Жалоба на игрока")
-        
-    async def on_submit(self, interaction: discord.Interaction):
-        # Get the staff channel
-        staff_channel = client.get_channel(STAFF_CHANNEL_ID)
-        
-        # Создаем эмбед для жалобы
-        embed = discord.Embed(
-            title=f"Жалоба от {interaction.user.display_name}",
-            description="Информация о нарушении:",
-            color=discord.Color.red()
-        )
-        
-        embed.add_field(name="Нарушитель", value=self.reported_player.value, inline=True)
-        embed.add_field(name="Тип нарушения", value=self.violation_type.value, inline=True)
-        embed.add_field(name="Описание", value=self.description.value, inline=False)
-        
-        if self.evidence.value:
-            embed.add_field(name="Доказательства", value=self.evidence.value, inline=False)
-        
-        # Add timestamp and user ID
-        embed.set_footer(text=f"ID пользователя: {interaction.user.id} • {discord.utils.format_dt(interaction.created_at)}")
-        
-        # Send the embed to the staff channel
-        if staff_channel:
-            await staff_channel.send(content=f"<@{interaction.user.id}> подал жалобу:", embed=embed)
-            await interaction.response.send_message("Ваша жалоба отправлена администрации!", ephemeral=True)
-        else:
-            logger.error(f"Error: Staff channel with ID {STAFF_CHANNEL_ID} not found")
-            await interaction.response.send_message("Ошибка: канал администрации не найден.", ephemeral=True)
-
-# Report View class
-class ReportView(View):
+# View с кнопками для выбора типа жалобы
+class ReportTypeView(View):
     def __init__(self):
         super().__init__(timeout=None)
     
-    @discord.ui.button(label="Подать жалобу", style=discord.ButtonStyle.danger, custom_id="submit_report")
-    async def submit_report(self, interaction: discord.Interaction, button: Button):
-        # Open the report modal
-        modal = ReportModal()
-        await interaction.response.send_modal(modal)
+    @discord.ui.button(label="Жалоба на игрока", style=discord.ButtonStyle.danger, custom_id="report_player")
+    async def report_player_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        await create_ticket_channel(interaction, "player")
+    
+    @discord.ui.button(label="Жалоба о баге", style=discord.ButtonStyle.primary, custom_id="report_bug")
+    async def report_bug_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        await create_ticket_channel(interaction, "bug")
+    
+    @discord.ui.button(label="Жалоба о проблеме", style=discord.ButtonStyle.secondary, custom_id="report_issue")
+    async def report_issue_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.defer(ephemeral=True)
+        await create_ticket_channel(interaction, "issue")
 
-# Bot events
+# Создание приватного канала для тикета
+async def create_ticket_channel(interaction: discord.Interaction, ticket_type):
+    user = interaction.user
+    guild = interaction.guild
+    
+    if not guild:
+        await interaction.followup.send("Ошибка: не удалось получить информацию о сервере", ephemeral=True)
+        return
+    
+    # Определение названия канала
+    channel_name = f"тикет-{ticket_type}-{user.name}"
+    logger.info(f"Создание тикета {channel_name} для пользователя {user.name}")
+    
+    try:
+        # Получение роли администратора
+        admin_roles = [role for role in guild.roles if role.permissions.administrator]
+        
+        # Создание прав доступа (overwrites)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+            user: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+        
+        # Добавление прав для админов
+        for role in admin_roles:
+            overwrites[role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        # Создание категории "Тикеты" если её нет
+        ticket_category = None
+        for category in guild.categories:
+            if category.name == "Тикеты":
+                ticket_category = category
+                break
+        
+        if not ticket_category:
+            ticket_category = await guild.create_category("Тикеты")
+        
+        # Создание текстового канала
+        ticket_channel = await guild.create_text_channel(
+            name=channel_name,
+            overwrites=overwrites,
+            category=ticket_category
+        )
+        
+        # Отправка сообщения в новый канал с шаблоном жалобы
+        if ticket_type == "player":
+            template = """**Жалоба на игрока**
+
+Пожалуйста, заполните следующую информацию:
+
+**Ник игрока:** 
+**Ваш ник:** 
+**Правило, которое нарушил:** 
+**Описание ситуации:** 
+**Демонстрация (скриншоты/видео):** 
+
+После заполнения жалобы, ожидайте ответа администрации."""
+        
+        elif ticket_type == "bug":
+            template = """**Жалоба о баге**
+
+Пожалуйста, заполните следующую информацию:
+
+**Ваш ник:** 
+**Описание проблемы/бага:** 
+**Демонстрация (скриншоты/видео):** 
+
+После заполнения жалобы, ожидайте ответа администрации."""
+        
+        else:  # issue
+            template = """**Жалоба о проблеме**
+
+Пожалуйста, заполните следующую информацию:
+
+**Ваш ник:** 
+**Описание проблемы:** 
+
+После заполнения жалобы, ожидайте ответа администрации."""
+        
+        # Отправка сообщения с шаблоном
+        await ticket_channel.send(f"{user.mention}, ваш тикет создан! Пожалуйста, заполните информацию ниже:")
+        await ticket_channel.send(template)
+        
+        # Кнопка для закрытия тикета
+        close_view = CloseTicketView()
+        await ticket_channel.send("Когда вопрос будет решен, тикет можно закрыть:", view=close_view)
+        
+        # Ответ пользователю
+        await interaction.followup.send(f"Тикет создан! Перейдите в канал {ticket_channel.mention}", ephemeral=True)
+        logger.info(f"Тикет {channel_name} успешно создан")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при создании тикета: {e}")
+        await interaction.followup.send(f"Произошла ошибка при создании тикета: {e}", ephemeral=True)
+
+# View с кнопкой для закрытия тикета
+class CloseTicketView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.danger, custom_id="close_ticket")
+    async def close_ticket_button(self, interaction: discord.Interaction, button: Button):
+        # Проверка, является ли пользователь администратором
+        is_admin = interaction.user.guild_permissions.administrator
+        
+        # Если пользователь не администратор, отправляем сообщение
+        if not is_admin:
+            await interaction.response.send_message("Только администраторы могут закрывать тикеты.", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        
+        # Отправка сообщения перед закрытием
+        await interaction.channel.send("Тикет закрывается...")
+        logger.info(f"Закрытие тикета {interaction.channel.name} администратором {interaction.user.name}")
+        
+        # Задержка для чтения сообщения
+        await asyncio.sleep(3)
+        
+        # Удаление канала
+        try:
+            await interaction.channel.delete()
+            logger.info(f"Тикет {interaction.channel.name} успешно закрыт")
+        except Exception as e:
+            logger.error(f"Ошибка при удалении канала тикета: {e}")
+            await interaction.channel.send(f"Ошибка при закрытии тикета: {e}")
+
+# Bot ready event
 @client.event
 async def on_ready():
-    logger.info(f"Бот {client.user} запущен и готов к работе!")
+    logger.info(f'Бот {client.user} запущен и готов к работе!')
     
-    # Синхронизируем команды
+    # Sync commands
     try:
-        synced = await tree.sync()
-        logger.info(f"Команды успешно синхронизированы")
+        await tree.sync()
+        logger.info("Команды успешно синхронизированы")
     except Exception as e:
         logger.error(f"Ошибка при синхронизации команд: {e}")
     
-    # Получение канала для заявок
+    # Get the ticket channel
     ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
     
     if ticket_channel:
         logger.info(f"Канал для заявок найден: {ticket_channel.name}")
-        # Проверяем, есть ли уже сообщение с кнопкой
+        # Проверяем, есть ли уже сообщение с кнопкой от этого бота
         has_message = False
         try:
-            # Проверяем сообщения в канале
+            # Проверяем больше сообщений, чтобы точно найти существующее
             async for message in ticket_channel.history(limit=20):
                 if message.author.id == client.user.id and len(message.components) > 0:
-                    # Если нашли сообщение с кнопкой, обновляем его
+                    # Проверяем работоспособности кнопки - если она интерактивная, оставляем
                     has_message = True
                     view = TicketView()
-                    
-                    # Обновляем сообщение с новой кнопкой
-                    await message.edit(content="Нажмите кнопку ниже, чтобы подать заявку на сервер:", view=view)
+                    message = await message.edit(view=view)
                     logger.info(f"Обновлено существующее сообщение с кнопкой")
                     break
             
-            # Если сообщение не найдено, создаем новое
+            # Если нет рабочего сообщения с кнопкой, создаем новое
             if not has_message:
-                # Отправляем сообщение с кнопкой
+                # Create an embed for the ticket message
+                embed = discord.Embed(
+                    title="Заявка на сервер",
+                    description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
+                    color=discord.Color.green()
+                )
+                
+                # Create a view with the ticket button
                 view = TicketView()
-                await ticket_channel.send("Нажмите кнопку ниже, чтобы подать заявку на сервер:", view=view)
-                logger.info(f"Отправлено новое сообщение с кнопкой")
-        
+                
+                # Send the embed with the view
+                await ticket_channel.send(embed=embed, view=view)
+                logger.info(f"Отправлено новое сообщение с кнопкой в канал {TICKET_CHANNEL_ID}")
         except Exception as e:
-            logger.error(f"Ошибка при отправке/обновлении сообщения с кнопкой: {e}")
+            logger.error(f"Ошибка при обновлении сообщения с кнопкой: {e}")
+            # Не создаем новое сообщение при ошибке во избежание дублей
+            logger.info(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
         logger.error(f"Error: Ticket channel with ID {TICKET_CHANNEL_ID} not found")
     
@@ -610,30 +534,37 @@ async def on_ready():
     
     if report_channel:
         logger.info(f"Канал для жалоб найден: {report_channel.name}")
-        # Проверяем, есть ли уже сообщение с кнопкой
-        has_message = False
+        # Проверяем, есть ли уже сообщение с кнопками жалоб от этого бота
+        has_report_message = False
         try:
             # Проверяем сообщения в канале
             async for message in report_channel.history(limit=20):
                 if message.author.id == client.user.id and len(message.components) > 0:
-                    # Если нашли сообщение с кнопкой, обновляем его
-                    has_message = True
-                    view = ReportView()
-                    
-                    # Обновляем сообщение с новой кнопкой
-                    await message.edit(content="Нажмите кнопку ниже, чтобы подать жалобу на игрока:", view=view)
+                    # Проверяем работоспособности кнопок - если они интерактивные, оставляем
+                    has_report_message = True
+                    view = ReportTypeView()
+                    message = await message.edit(view=view)
                     logger.info(f"Обновлено существующее сообщение с кнопками для жалоб")
                     break
             
-            # Если сообщение не найдено, создаем новое
-            if not has_message:
-                # Отправляем сообщение с кнопкой
-                view = ReportView()
-                await report_channel.send("Нажмите кнопку ниже, чтобы подать жалобу на игрока:", view=view)
-                logger.info(f"Отправлено новое сообщение с кнопкой для жалоб")
-        
+            # Если нет рабочего сообщения с кнопками, создаем новое
+            if not has_report_message:
+                # Create an embed for the report message
+                embed = discord.Embed(
+                    title="Система жалоб",
+                    description="Нажмите на одну из кнопок ниже, чтобы создать тикет с жалобой.",
+                    color=discord.Color.red()
+                )
+                
+                # Create a view with the report buttons
+                view = ReportTypeView()
+                
+                # Send the embed with the view
+                await report_channel.send(embed=embed, view=view)
+                logger.info(f"Отправлено новое сообщение с кнопками жалоб в канал {REPORT_CHANNEL_ID}")
         except Exception as e:
-            logger.error(f"Ошибка при отправке/обновлении сообщения с кнопкой для жалоб: {e}")
+            logger.error(f"Ошибка при обновлении сообщения с кнопками жалоб: {e}")
+            logger.info(f"Пропущено создание нового сообщения для предотвращения дублирования")
     else:
         logger.error(f"Error: Report channel with ID {REPORT_CHANNEL_ID} not found")
     
@@ -696,25 +627,56 @@ async def send_info(interaction: discord.Interaction):
         if success:
             await interaction.response.send_message("Информационное сообщение отправлено/обновлено!", ephemeral=True)
         else:
-            await interaction.response.send_message("Ошибка при отправке информационного сообщения.", ephemeral=True)
+            await interaction.response.send_message("Произошла ошибка при отправке/обновлении информационного сообщения.", ephemeral=True)
     else:
-        await interaction.response.send_message(f"Ошибка: Информационный канал с ID {INFO_CHANNEL_ID} не найден.", ephemeral=True)
+        # Respond with an error
+        await interaction.response.send_message(f"Ошибка: канал с ID {INFO_CHANNEL_ID} не найден", ephemeral=True)
 
-# Команда для отправки сообщения с кнопкой заявки
-@tree.command(name="send_ticket", description="Отправить сообщение с кнопкой для подачи заявки")
+# Command to send a new ticket message - для заявок на вступление на сервер
+@tree.command(name="send_ticket", description="Отправить сообщение с кнопкой заявки на вступление")
 @app_commands.default_permissions(administrator=True)
 async def send_ticket(interaction: discord.Interaction):
-    view = TicketView()
-    await interaction.response.send_message("Нажмите кнопку ниже, чтобы подать заявку на сервер:", view=view)
+    # Get the ticket channel
+    ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
+    
+    if ticket_channel:
+        # Проверяем, есть ли уже сообщение с кнопкой
+        has_message = False
+        try:
+            # Проверяем сообщения в канале
+            async for message in ticket_channel.history(limit=20):
+                if message.author.id == client.user.id and len(message.components) > 0:
+                    # Если нашли сообщение с кнопкой, обновляем его
+                    has_message = True
+                    view = TicketView()
+                    await message.edit(view=view, embed=message.embeds[0] if message.embeds else None)
+                    await interaction.response.send_message("Существующее сообщение с кнопкой обновлено!", ephemeral=True)
+                    break
+            
+            # Если сообщение не найдено, создаем новое
+            if not has_message:
+                # Create an embed for the ticket message
+                embed = discord.Embed(
+                    title="Заявка на сервер",
+                    description="Нажмите на кнопку ниже, чтобы подать заявку на вступление на наш Minecraft сервер!",
+                    color=discord.Color.green()
+                )
+                
+                # Create a view with the ticket button
+                view = TicketView()
+                
+                # Send the embed with the view
+                await ticket_channel.send(embed=embed, view=view)
+                await interaction.response.send_message("Новое сообщение с кнопкой заявки отправлено!", ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Ошибка при отправке сообщения с кнопкой: {e}")
+            await interaction.response.send_message(f"Произошла ошибка: {e}", ephemeral=True)
+    else:
+        # Respond with an error
+        await interaction.response.send_message(f"Ошибка: канал с ID {TICKET_CHANNEL_ID} не найден", ephemeral=True)
 
-# Команда для отправки сообщения с кнопкой жалобы
-@tree.command(name="send_report", description="Отправить сообщение с кнопкой для подачи жалобы")
-@app_commands.default_permissions(administrator=True)
-async def send_report(interaction: discord.Interaction):
-    view = ReportView()
-    await interaction.response.send_message("Нажмите кнопку ниже, чтобы подать жалобу на игрока:", view=view)
-
-# Run the bot
+# Start the bot
 try:
     client.run(TOKEN, reconnect=True, log_handler=None)
 except discord.errors.LoginFailure:
@@ -723,3 +685,202 @@ except Exception as e:
     logger.critical(f"Критическая ошибка при запуске бота: {e}")
     import traceback
     traceback.print_exc()
+# View с кнопками для информационного канала
+class InfoView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="🌐 Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
+    async def website_button(self, interaction: discord.Interaction, button: Button):
+        # Кнопка с URL автоматически перенаправляет на сайт
+        pass
+    
+    @discord.ui.button(label="🎮 Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
+    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
+        # Отправляем информацию о том, как зайти на сервер
+        embed = discord.Embed(
+            title="🎮 Как зайти на сервер",
+            description="Следуйте этим простым шагам для подключения:",
+            color=discord.Color.green()
+        )
+        
+        embed.add_field(
+            name="📋 Пошаговая инструкция:",
+            value="1️⃣ Запустите Minecraft версии **1.21+**\n"
+                  "2️⃣ Перейдите в раздел **'Сетевая игра'**\n"
+                  "3️⃣ Нажмите **'Добавить сервер'**\n"
+                  "4️⃣ Введите IP: `minestoryvanilla.imba.land`\n"
+                  "5️⃣ Нажмите **'Готово'** и подключитесь к серверу",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="⚠️ Важно:",
+            value="• Убедитесь, что у вас версия Minecraft 1.21 или выше\n"
+                  "• Для игры на сервере необходимо подать заявку\n"
+                  "• После одобрения заявки вы получите роль игрока",
+            inline=False
+        )
+        
+        embed.set_footer(text="MineStory • Ванильный сервер")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
+    
+    @discord.ui.button(label="📝 Подать заявку", style=discord.ButtonStyle.success, custom_id="apply_from_info")
+    async def apply_button(self, interaction: discord.Interaction, button: Button):
+        # Перенаправляем в канал с заявками
+        ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
+        if ticket_channel:
+            embed = discord.Embed(
+                title="📝 Подача заявки",
+                description=f"Для подачи заявки перейдите в канал {ticket_channel.mention} и нажмите на кнопку **'Подать заявку'**",
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text="MineStory • Ванильный сервер")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            await interaction.response.send_message("Канал для подачи заявок не найден. Обратитесь к администратору.", ephemeral=True)
+        
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Подать заявку' в информационном канале")
+
+# Функция для отправки или обновления информационного сообщения
+async def send_or_update_info_message(channel):
+    if not channel:
+        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
+        return False
+    
+    # Проверяем, есть ли уже сообщение с кнопками
+    has_message = False
+    try:
+        # Проверяем сообщения в канале
+        async for message in channel.history(limit=20):
+            if message.author.id == client.user.id and len(message.components) > 0:
+                # Если нашли сообщение с кнопками, обновляем его
+                has_message = True
+                view = InfoView()
+                
+                # Создаем красивый embed для информационного сообщения
+                embed = discord.Embed(
+                    title="🏰 MineStory - Ванильный Minecraft Сервер",
+                    description="Добро пожаловать на наш уютный приватный сервер!",
+                    color=discord.Color.from_rgb(88, 101, 242)  # Discord blurple
+                )
+                
+                embed.add_field(
+                    name="🎮 О сервере:",
+                    value="• **Версия:** 1.21+\n"
+                          "• **Тип:** Ванильный с полезными плагинами\n"
+                          "• **Режим:** Приватный (требуется заявка)\n"
+                          "• **IP:** `minestoryvanilla.imba.land`",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="🔧 Установленные плагины:",
+                    value="• **ViaVersion** - поддержка разных версий\n"
+                          "• **PlasmoVoice** - голосовой чат в игре",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="🌟 Особенности:",
+                    value="• Дружелюбное сообщество\n"
+                          "• Стабильная работа 24/7\n"
+                          "• Регулярные обновления\n"
+                          "• Защита от гриферов",
+                    inline=False
+                )
+                
+                embed.set_footer(
+                    text="Нажмите на кнопки ниже для получения дополнительной информации",
+                    icon_url="https://cdn.discordapp.com/emojis/852881450667081728.png"  # Minecraft grass block emoji
+                )
+                
+                # Проверяем, есть ли изображение в сообщении
+                has_image = False
+                if message.attachments:
+                    for attachment in message.attachments:
+                        if attachment.filename == "info.jpg":
+                            has_image = True
+                            embed.set_image(url=attachment.url)
+                            break
+                
+                # Если нет изображения, пытаемся добавить его
+                if not has_image and os.path.exists("info.jpg"):
+                    try:
+                        with open("info.jpg", "rb") as f:
+                            image = discord.File(f, filename="info.jpg")
+                            # Удаляем старое сообщение и создаем новое с изображением
+                            await message.delete()
+                            new_message = await channel.send(embed=embed, file=image, view=view)
+                            logger.info(f"Создано новое информационное сообщение с изображением")
+                            return True
+                    except Exception as e:
+                        logger.warning(f"Не удалось добавить изображение: {e}")
+                
+                # Обновляем сообщение с embed и кнопками
+                await message.edit(embed=embed, view=view)
+                logger.info(f"Обновлено существующее информационное сообщение")
+                return True
+        
+        # Если сообщение не найдено, создаем новое
+        if not has_message:
+            # Создаем красивый embed для информационного сообщения
+            embed = discord.Embed(
+                title="🏰 MineStory - Ванильный Minecraft Сервер",
+                description="Добро пожаловать на наш уютный приватный сервер!",
+                color=discord.Color.from_rgb(88, 101, 242)  # Discord blurple
+            )
+            
+            embed.add_field(
+                name="🎮 О сервере:",
+                value="• **Версия:** 1.21+\n"
+                      "• **Тип:** Ванильный с полезными плагинами\n"
+                      "• **Режим:** Приватный (требуется заявка)\n"
+                      "• **IP:** `minestoryvanilla.imba.land`",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 Установленные плагины:",
+                value="• **ViaVersion** - поддержка разных версий\n"
+                      "• **PlasmoVoice** - голосовой чат в игре",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🌟 Особенности:",
+                value="• Дружелюбное сообщество\n"
+                      "• Стабильная работа 24/7\n"
+                      "• Регулярные обновления\n"
+                      "• Защита от гриферов",
+                inline=False
+            )
+            
+            embed.set_footer(
+                text="Нажмите на кнопки ниже для получения дополнительной информации",
+                icon_url="https://cdn.discordapp.com/emojis/852881450667081728.png"  # Minecraft grass block emoji
+            )
+            
+            view = InfoView()
+            
+            # Пытаемся отправить с изображением, если оно есть
+            if os.path.exists("info.jpg"):
+                try:
+                    with open("info.jpg", "rb") as f:
+                        image = discord.File(f, filename="info.jpg")
+                        await channel.send(embed=embed, file=image, view=view)
+                        logger.info(f"Отправлено новое информационное сообщение с изображением")
+                        return True
+                except Exception as e:
+                    logger.warning(f"Не удалось отправить изображение: {e}")
+            
+            # Отправляем без изображения
+            await channel.send(embed=embed, view=view)
+            logger.info(f"Отправлено новое информационное сообщение")
+            return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
+        return False
