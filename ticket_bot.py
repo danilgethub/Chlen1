@@ -43,206 +43,6 @@ intents.members = True  # Добавляем интент для работы с
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# View с кнопками для информационного канала
-class InfoView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(label="🌐 Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
-    async def website_button(self, interaction: discord.Interaction, button: Button):
-        # Кнопка с URL автоматически перенаправляет на сайт
-        pass
-    
-    @discord.ui.button(label="🎮 Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
-    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
-        # Отправляем информацию о том, как зайти на сервер
-        embed = discord.Embed(
-            title="🎮 Как зайти на сервер",
-            description="Следуйте этим простым шагам для подключения:",
-            color=discord.Color.green()
-        )
-        
-        embed.add_field(
-            name="📋 Пошаговая инструкция:",
-            value="1️⃣ Запустите Minecraft версии **1.21+**\n"
-                  "2️⃣ Перейдите в раздел **'Сетевая игра'**\n"
-                  "3️⃣ Нажмите **'Добавить сервер'**\n"
-                  "4️⃣ Введите IP: `minestoryvanilla.imba.land`\n"
-                  "5️⃣ Нажмите **'Готово'** и подключитесь к серверу",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="⚠️ Важно:",
-            value="• Убедитесь, что у вас версия Minecraft 1.21 или выше\n"
-                  "• Для игры на сервере необходимо подать заявку\n"
-                  "• После одобрения заявки вы получите роль игрока",
-            inline=False
-        )
-        
-        embed.set_footer(text="MineStory • Ванильный сервер")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
-    
-    @discord.ui.button(label="📝 Подать заявку", style=discord.ButtonStyle.success, custom_id="apply_from_info")
-    async def apply_button(self, interaction: discord.Interaction, button: Button):
-        # Перенаправляем в канал с заявками
-        ticket_channel = client.get_channel(TICKET_CHANNEL_ID)
-        if ticket_channel:
-            embed = discord.Embed(
-                title="📝 Подача заявки",
-                description=f"Для подачи заявки перейдите в канал {ticket_channel.mention} и нажмите на кнопку **'Подать заявку'**",
-                color=discord.Color.blue()
-            )
-            embed.set_footer(text="MineStory • Ванильный сервер")
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-        else:
-            await interaction.response.send_message("Канал для подачи заявок не найден. Обратитесь к администратору.", ephemeral=True)
-        
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Подать заявку' в информационном канале")
-
-# Функция для отправки или обновления информационного сообщения
-async def send_or_update_info_message(channel):
-    if not channel:
-        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
-        return False
-    
-    # Проверяем, есть ли уже сообщение с кнопками
-    has_message = False
-    try:
-        # Проверяем сообщения в канале
-        async for message in channel.history(limit=20):
-            if message.author.id == client.user.id and len(message.components) > 0:
-                # Если нашли сообщение с кнопками, обновляем его
-                has_message = True
-                view = InfoView()
-                
-                # Создаем красивый embed для информационного сообщения
-                embed = discord.Embed(
-                    title="🏰 MineStory - Ванильный Minecraft Сервер",
-                    description="Добро пожаловать на наш уютный приватный сервер!",
-                    color=discord.Color.from_rgb(88, 101, 242)  # Discord blurple
-                )
-                
-                embed.add_field(
-                    name="🎮 О сервере:",
-                    value="• **Версия:** 1.21+\n"
-                          "• **Тип:** Ванильный с полезными плагинами\n"
-                          "• **Режим:** Приватный (требуется заявка)\n"
-                          "• **IP:** `minestoryvanilla.imba.land`",
-                    inline=False
-                )
-                
-                embed.add_field(
-                    name="🔧 Установленные плагины:",
-                    value="• **ViaVersion** - поддержка разных версий\n"
-                          "• **PlasmoVoice** - голосовой чат в игре",
-                    inline=False
-                )
-                
-                embed.add_field(
-                    name="🌟 Особенности:",
-                    value="• Дружелюбное сообщество\n"
-                          "• Стабильная работа 24/7\n"
-                          "• Регулярные обновления\n"
-                          "• Защита от гриферов",
-                    inline=False
-                )
-                
-                embed.set_footer(
-                    text="Нажмите на кнопки ниже для получения дополнительной информации",
-                    icon_url="https://cdn.discordapp.com/emojis/852881450667081728.png"  # Minecraft grass block emoji
-                )
-                
-                # Проверяем, есть ли изображение в сообщении
-                has_image = False
-                if message.attachments:
-                    for attachment in message.attachments:
-                        if attachment.filename == "info.jpg":
-                            has_image = True
-                            embed.set_image(url=attachment.url)
-                            break
-                
-                # Если нет изображения, пытаемся добавить его
-                if not has_image and os.path.exists("info.jpg"):
-                    try:
-                        with open("info.jpg", "rb") as f:
-                            image = discord.File(f, filename="info.jpg")
-                            # Удаляем старое сообщение и создаем новое с изображением
-                            await message.delete()
-                            new_message = await channel.send(embed=embed, file=image, view=view)
-                            logger.info(f"Создано новое информационное сообщение с изображением")
-                            return True
-                    except Exception as e:
-                        logger.warning(f"Не удалось добавить изображение: {e}")
-                
-                # Обновляем сообщение с embed и кнопками
-                await message.edit(embed=embed, view=view)
-                logger.info(f"Обновлено существующее информационное сообщение")
-                return True
-        
-        # Если сообщение не найдено, создаем новое
-        if not has_message:
-            # Создаем красивый embed для информационного сообщения
-            embed = discord.Embed(
-                title="🏰 MineStory - Ванильный Minecraft Сервер",
-                description="Добро пожаловать на наш уютный приватный сервер!",
-                color=discord.Color.from_rgb(88, 101, 242)  # Discord blurple
-            )
-            
-            embed.add_field(
-                name="🎮 О сервере:",
-                value="• **Версия:** 1.21+\n"
-                      "• **Тип:** Ванильный с полезными плагинами\n"
-                      "• **Режим:** Приватный (требуется заявка)\n"
-                      "• **IP:** `minestoryvanilla.imba.land`",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="🔧 Установленные плагины:",
-                value="• **ViaVersion** - поддержка разных версий\n"
-                      "• **PlasmoVoice** - голосовой чат в игре",
-                inline=False
-            )
-            
-            embed.add_field(
-                name="🌟 Особенности:",
-                value="• Дружелюбное сообщество\n"
-                      "• Стабильная работа 24/7\n"
-                      "• Регулярные обновления\n"
-                      "• Защита от гриферов",
-                inline=False
-            )
-            
-            embed.set_footer(
-                text="Нажмите на кнопки ниже для получения дополнительной информации",
-                icon_url="https://cdn.discordapp.com/emojis/852881450667081728.png"  # Minecraft grass block emoji
-            )
-            
-            view = InfoView()
-            
-            # Пытаемся отправить с изображением, если оно есть
-            if os.path.exists("info.jpg"):
-                try:
-                    with open("info.jpg", "rb") as f:
-                        image = discord.File(f, filename="info.jpg")
-                        await channel.send(embed=embed, file=image, view=view)
-                        logger.info(f"Отправлено новое информационное сообщение с изображением")
-                        return True
-                except Exception as e:
-                    logger.warning(f"Не удалось отправить изображение: {e}")
-            
-            # Отправляем без изображения
-            await channel.send(embed=embed, view=view)
-            logger.info(f"Отправлено новое информационное сообщение")
-            return True
-        
-    except Exception as e:
-        logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
-        return False
-
 # Button View class для кнопок "Принять" и "Отклонить"
 class ApplicationActionView(View):
     def __init__(self, applicant_id, applicant_nickname, applicant_age):
@@ -885,3 +685,238 @@ except Exception as e:
     logger.critical(f"Критическая ошибка при запуске бота: {e}")
     import traceback
     traceback.print_exc()
+# View с кнопками для информационного канала
+class InfoView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="🌐 Официальный сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/", emoji="🌐")
+    async def website_button(self, interaction: discord.Interaction, button: Button):
+        # Кнопка с URL автоматически перенаправляет на сайт
+        pass
+    
+    @discord.ui.button(label="🎮 Как подключиться", style=discord.ButtonStyle.success, custom_id="how_to_join", emoji="🎮")
+    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
+        # Создаем красивый embed с инструкцией
+        embed = discord.Embed(
+            title="🎮 Как подключиться к серверу MineStory",
+            description="Следуйте этим простым шагам для подключения:",
+            color=discord.Color.green()
+        )
+        
+        embed.add_field(
+            name="📋 Пошаговая инструкция:",
+            value="```\n1️⃣ Запустите Minecraft версии 1.21+\n2️⃣ Перейдите в раздел 'Сетевая игра'\n3️⃣ Нажмите 'Добавить сервер'\n4️⃣ Введите IP: minestoryvanilla.imba.land\n5️⃣ Нажмите 'Готово' и подключитесь```",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🌐 IP сервера:",
+            value="`minestoryvanilla.imba.land`",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🎯 Версия:",
+            value="`1.21+`",
+            inline=True
+        )
+        
+        embed.set_footer(text="Добро пожаловать в MineStory! 🎉")
+        embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/1234567890/minecraft_icon.png")  # Можно заменить на реальную ссылку
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как подключиться'")
+    
+    @discord.ui.button(label="📊 Статистика сервера", style=discord.ButtonStyle.secondary, custom_id="server_stats", emoji="📊")
+    async def server_stats_button(self, interaction: discord.Interaction, button: Button):
+        # Создаем embed со статистикой сервера
+        embed = discord.Embed(
+            title="📊 Статистика сервера MineStory",
+            description="Актуальная информация о нашем сервере",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="🎮 Тип сервера:",
+            value="Ванильный выживание",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🔧 Версия:",
+            value="1.21+",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🔌 Плагины:",
+            value="ViaVersion, Plasmovoice",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🌍 Мир:",
+            value="Приватный мир с уютной атмосферой",
+            inline=False
+        )
+        
+        embed.set_footer(text="Обновлено: сегодня")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} запросил статистику сервера")
+    
+    @discord.ui.button(label="❓ Помощь", style=discord.ButtonStyle.secondary, custom_id="help_info", emoji="❓")
+    async def help_button(self, interaction: discord.Interaction, button: Button):
+        # Создаем embed с полезной информацией
+        embed = discord.Embed(
+            title="❓ Нужна помощь?",
+            description="Здесь вы найдете ответы на частые вопросы",
+            color=discord.Color.orange()
+        )
+        
+        embed.add_field(
+            name="🎫 Как подать заявку?",
+            value="Найдите канал с заявками и нажмите соответствующую кнопку",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🛠️ Проблемы с подключением?",
+            value="Убедитесь, что используете версию 1.21+ и правильный IP",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="👥 Нужна поддержка?",
+            value="Обратитесь к администраторам сервера",
+            inline=False
+        )
+        
+        embed.set_footer(text="Мы всегда готовы помочь! 💙")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} запросил помощь")
+
+# Функция для отправки или обновления информационного сообщения
+async def send_or_update_info_message(channel):
+    if not channel:
+        logger.error(f"Error: Info channel with ID {INFO_CHANNEL_ID} not found")
+        return False
+    
+    # Проверяем, есть ли уже сообщение с кнопками
+    has_message = False
+    try:
+        # Проверяем сообщения в канале
+        async for message in channel.history(limit=20):
+            if message.author.id == client.user.id and len(message.components) > 0:
+                # Если нашли сообщение с кнопками, обновляем его
+                has_message = True
+                view = InfoView()
+                
+                # Проверяем, есть ли изображение в сообщении
+                has_image = False
+                if message.attachments:
+                    for attachment in message.attachments:
+                        if attachment.filename == "info.jpg":
+                            has_image = True
+                            break
+                
+                # Если нет изображения, добавляем его
+                if not has_image:
+                    with open("info.jpg", "rb") as f:
+                        image = discord.File(f, filename="info.jpg")
+                        new_message = await channel.send(file=image)
+                        await message.delete()
+                        message = new_message
+                
+                # Создаем красивый embed для основного сообщения
+                embed = discord.Embed(
+                    title="🎮 Добро пожаловать на MineStory!",
+                    description="Приватный ванильный сервер для истинных ценителей Minecraft",
+                    color=discord.Color.from_rgb(88, 101, 242)  # Discord фиолетовый
+                )
+                
+                embed.add_field(
+                    name="🌟 О сервере:",
+                    value="MineStory - это уютное место, где можно расслабиться и насладиться классическим выживанием в Minecraft. Здесь царит дружелюбная атмосфера и взаимопомощь!",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="🔧 Технические характеристики:",
+                    value="```\n🎯 Версия: 1.21+\n🔌 Плагины: ViaVersion, Plasmovoice\n🌍 Тип: Ванильное выживание\n🛡️ Безопасность: Приватный доступ```",
+                    inline=False
+                )
+                
+                embed.add_field(
+                    name="🎵 Особенности:",
+                    value="• 🎤 Голосовой чат (Plasmovoice)\n• 🔄 Поддержка разных версий\n• 🏠 Уютное сообщество\n• 🛡️ Защищенный мир",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🚀 Начать играть:",
+                    value="Нажмите кнопки ниже, чтобы:\n• Посетить наш сайт\n• Узнать как подключиться\n• Посмотреть статистику\n• Получить помощь",
+                    inline=True
+                )
+                
+                embed.set_footer(text="Присоединяйтесь к нашему дружному сообществу! 💙", icon_url="https://cdn.discordapp.com/emojis/123456789.png")
+                embed.set_image(url="https://via.placeholder.com/600x200/5865F2/FFFFFF?text=MineStory+Server")  # Можно заменить на реальное изображение
+                
+                await message.edit(embed=embed, view=view)
+                logger.info(f"Обновлено существующее информационное сообщение")
+                return True
+        
+        # Если сообщение не найдено, создаем новое
+        if not has_message:
+            # Создаем красивый embed для нового сообщения
+            embed = discord.Embed(
+                title="🎮 Добро пожаловать на MineStory!",
+                description="Приватный ванильный сервер для истинных ценителей Minecraft",
+                color=discord.Color.from_rgb(88, 101, 242)  # Discord фиолетовый
+            )
+            
+            embed.add_field(
+                name="🌟 О сервере:",
+                value="MineStory - это уютное место, где можно расслабиться и насладиться классическим выживанием в Minecraft. Здесь царит дружелюбная атмосфера и взаимопомощь!",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 Технические характеристики:",
+                value="```\n🎯 Версия: 1.21+\n🔌 Плагины: ViaVersion, Plasmovoice\n🌍 Тип: Ванильное выживание\n🛡️ Безопасность: Приватный доступ```",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🎵 Особенности:",
+                value="• 🎤 Голосовой чат (Plasmovoice)\n• 🔄 Поддержка разных версий\n• 🏠 Уютное сообщество\n• 🛡️ Защищенный мир",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🚀 Начать играть:",
+                value="Нажмите кнопки ниже, чтобы:\n• Посетить наш сайт\n• Узнать как подключиться\n• Посмотреть статистику\n• Получить помощь",
+                inline=True
+            )
+            
+            embed.set_footer(text="Присоединяйтесь к нашему дружному сообществу! 💙", icon_url="https://cdn.discordapp.com/emojis/123456789.png")
+            embed.set_image(url="https://via.placeholder.com/600x200/5865F2/FFFFFF?text=MineStory+Server")  # Можно заменить на реальное изображение
+            
+            # Пытаемся отправить изображение, если файл существует
+            try:
+                with open("info.jpg", "rb") as f:
+                    image = discord.File(f, filename="info.jpg")
+                    await channel.send(file=image)
+            except FileNotFoundError:
+                logger.warning("Файл info.jpg не найден, отправляем сообщение без изображения")
+            
+            # Отправляем embed с кнопками
+            view = InfoView()
+            await channel.send(embed=embed, view=view)
+            logger.info(f"Отправлено новое информационное сообщение")
+            return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
