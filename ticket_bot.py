@@ -312,6 +312,100 @@ class TicketModal(Modal, title="Заявка на сервер"):
             except:
                 pass
 
+# View с кнопками для информационного канала
+class InfoView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="🌐 Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
+    async def website_button(self, interaction: discord.Interaction, button: Button):
+        # Кнопка с URL автоматически перенаправляет на сайт
+        pass
+    
+    @discord.ui.button(label="🎮 Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
+    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
+        # Создаем красивый embed для инструкции
+        embed = discord.Embed(
+            title="🎮 Как подключиться к серверу",
+            description="Следуйте этим простым шагам для подключения:",
+            color=0x00ff00
+        )
+        embed.add_field(
+            name="📋 Пошаговая инструкция:",
+            value="```\n1. Запустите Minecraft версии 1.21+\n2. Перейдите в раздел 'Сетевая игра'\n3. Нажмите 'Добавить сервер'\n4. Введите IP: minestoryvanilla.imba.land\n5. Нажмите 'Готово' и подключитесь```",
+            inline=False
+        )
+        embed.add_field(
+            name="⚡ IP адрес сервера:",
+            value="`minestoryvanilla.imba.land`",
+            inline=True
+        )
+        embed.add_field(
+            name="🔧 Версия:",
+            value="`1.21+`",
+            inline=True
+        )
+        embed.set_footer(text="Удачной игры! 🎉")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
+    
+    @discord.ui.button(label="📋 Правила", style=discord.ButtonStyle.secondary, custom_id="rules")
+    async def rules_button(self, interaction: discord.Interaction, button: Button):
+        # Создаем embed с правилами сервера
+        embed = discord.Embed(
+            title="📋 Правила сервера MineStory",
+            description="Соблюдение правил обязательно для всех игроков!",
+            color=0xffaa00
+        )
+        embed.add_field(
+            name="🚫 Запрещено:",
+            value="• Гриферство и разрушение чужих построек\n• Использование читов и модификаций\n• Оскорбления и токсичное поведение\n• Спам в чате\n• Кража предметов у других игроков",
+            inline=False
+        )
+        embed.add_field(
+            name="✅ Разрешено:",
+            value="• Строительство и творчество\n• Торговля между игроками\n• Совместные проекты\n• Помощь новичкам",
+            inline=False
+        )
+        embed.set_footer(text="За нарушение правил предусмотрены санкции! ⚠️")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Правила'")
+    
+    @discord.ui.button(label="ℹ️ О сервере", style=discord.ButtonStyle.secondary, custom_id="about_server")
+    async def about_server_button(self, interaction: discord.Interaction, button: Button):
+        # Создаем embed с информацией о сервере
+        embed = discord.Embed(
+            title="ℹ️ О сервере MineStory",
+            description="Узнайте больше о нашем сервере!",
+            color=0x0099ff
+        )
+        embed.add_field(
+            name="🎯 Тип сервера:",
+            value="Приватный ванильный сервер",
+            inline=True
+        )
+        embed.add_field(
+            name="👥 Сообщество:",
+            value="Дружелюбное и активное",
+            inline=True
+        )
+        embed.add_field(
+            name="🔧 Плагины:",
+            value="• ViaVersion - поддержка разных версий\n• PlasmoVoice - голосовой чат",
+            inline=False
+        )
+        embed.add_field(
+            name="🎮 Особенности:",
+            value="• Ванильный геймплей\n• Стабильная работа 24/7\n• Регулярные обновления\n• Активная администрация",
+            inline=False
+        )
+        embed.set_footer(text="Присоединяйтесь к нашему сообществу! 🎉")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'О сервере'")
+
 # Function to send or update info message
 async def send_or_update_info_message(channel):
     if not channel:
@@ -752,96 +846,3 @@ except Exception as e:
     logger.critical(f"Критическая ошибка при запуске бота: {e}")
     import traceback
     traceback.print_exc()
-# View с кнопками для информационного канала
-class InfoView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    
-    @discord.ui.button(label="🌐 Сайт", style=discord.ButtonStyle.link, url="https://site20-production.up.railway.app/")
-    async def website_button(self, interaction: discord.Interaction, button: Button):
-        # Кнопка с URL автоматически перенаправляет на сайт
-        pass
-    
-    @discord.ui.button(label="🎮 Как зайти", style=discord.ButtonStyle.primary, custom_id="how_to_join")
-    async def how_to_join_button(self, interaction: discord.Interaction, button: Button):
-        # Создаем красивый embed для инструкции
-        embed = discord.Embed(
-            title="🎮 Как подключиться к серверу",
-            description="Следуйте этим простым шагам для подключения:",
-            color=0x00ff00
-        )
-        embed.add_field(
-            name="📋 Пошаговая инструкция:",
-            value="```\n1. Запустите Minecraft версии 1.21+\n2. Перейдите в раздел 'Сетевая игра'\n3. Нажмите 'Добавить сервер'\n4. Введите IP: minestoryvanilla.imba.land\n5. Нажмите 'Готово' и подключитесь```",
-            inline=False
-        )
-        embed.add_field(
-            name="⚡ IP адрес сервера:",
-            value="`minestoryvanilla.imba.land`",
-            inline=True
-        )
-        embed.add_field(
-            name="🔧 Версия:",
-            value="`1.21+`",
-            inline=True
-        )
-        embed.set_footer(text="Удачной игры! 🎉")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Как зайти'")
-    
-    @discord.ui.button(label="📋 Правила", style=discord.ButtonStyle.secondary, custom_id="rules")
-    async def rules_button(self, interaction: discord.Interaction, button: Button):
-        # Создаем embed с правилами сервера
-        embed = discord.Embed(
-            title="📋 Правила сервера MineStory",
-            description="Соблюдение правил обязательно для всех игроков!",
-            color=0xffaa00
-        )
-        embed.add_field(
-            name="🚫 Запрещено:",
-            value="• Гриферство и разрушение чужих построек\n• Использование читов и модификаций\n• Оскорбления и токсичное поведение\n• Спам в чате\n• Кража предметов у других игроков",
-            inline=False
-        )
-        embed.add_field(
-            name="✅ Разрешено:",
-            value="• Строительство и творчество\n• Торговля между игроками\n• Совместные проекты\n• Помощь новичкам",
-            inline=False
-        )
-        embed.set_footer(text="За нарушение правил предусмотрены санкции! ⚠️")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'Правила'")
-    
-    @discord.ui.button(label="ℹ️ О сервере", style=discord.ButtonStyle.secondary, custom_id="about_server")
-    async def about_server_button(self, interaction: discord.Interaction, button: Button):
-        # Создаем embed с информацией о сервере
-        embed = discord.Embed(
-            title="ℹ️ О сервере MineStory",
-            description="Узнайте больше о нашем сервере!",
-            color=0x0099ff
-        )
-        embed.add_field(
-            name="🎯 Тип сервера:",
-            value="Приватный ванильный сервер",
-            inline=True
-        )
-        embed.add_field(
-            name="👥 Сообщество:",
-            value="Дружелюбное и активное",
-            inline=True
-        )
-        embed.add_field(
-            name="🔧 Плагины:",
-            value="• ViaVersion - поддержка разных версий\n• PlasmoVoice - голосовой чат",
-            inline=False
-        )
-        embed.add_field(
-            name="🎮 Особенности:",
-            value="• Ванильный геймплей\n• Стабильная работа 24/7\n• Регулярные обновления\n• Активная администрация",
-            inline=False
-        )
-        embed.set_footer(text="Присоединяйтесь к нашему сообществу! 🎉")
-        
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        logger.info(f"Пользователь {interaction.user.name} нажал на кнопку 'О сервере'")
