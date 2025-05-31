@@ -920,3 +920,11 @@ async def send_or_update_info_message(channel):
         
     except Exception as e:
         logger.error(f"Ошибка при отправке/обновлении информационного сообщения: {e}")
+        return False
+
+# Запуск бота
+if __name__ == "__main__":
+    try:
+        client.run(TOKEN)
+    except Exception as e:
+        logger.error(f"Критическая ошибка при запуске бота: {e}")
